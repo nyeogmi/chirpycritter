@@ -7,11 +7,7 @@ use std::{sync::{Arc, Mutex}, time::Instant};
 
 use cpal::{Stream, traits::{DeviceTrait, HostTrait, StreamTrait}};
 
-pub trait Synthesizer: 'static+Send {
-    fn new(config: SynthConfig) -> Self;
-    fn next_sample(&mut self) -> f32;
-    fn is_playing(&self, sample: u64) -> bool;
-}
+use crate::{SynthConfig, Synthesizer};
 
 pub struct SynthEnvironment<S: Synthesizer> {
     first_sample_instant: Instant,
@@ -19,11 +15,6 @@ pub struct SynthEnvironment<S: Synthesizer> {
     config: SynthConfig,
     #[allow(dead_code)]
     stream: Stream,  // just keep this so it doesn't get dealloc'ed
-}
-
-#[derive(Clone, Copy)]
-pub struct SynthConfig {
-    pub sample_rate: u64
 }
 
 impl<S: Synthesizer> SynthEnvironment<S> {
@@ -67,6 +58,11 @@ impl<S: Synthesizer> SynthEnvironment<S> {
             config: synth_config,
             stream,
         }
+    }
+
+    pub fn setup(&self, f: impl FnOnce(&mut S)) {
+        let mut s = self.synthesizer.lock().unwrap();
+        f(&mut *s)
     }
 
     fn run<T>(synth_ref: Arc<Mutex<S>>, device: &cpal::Device, config: &cpal::StreamConfig, channels: usize) -> Stream

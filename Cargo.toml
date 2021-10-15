@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 cpal = "0.13.4"
+midly = "0.5.2"  # TODO: Gate behind a feature
