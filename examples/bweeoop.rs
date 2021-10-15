@@ -12,9 +12,11 @@ impl Synthesizer for SineExample {
         SineExample { config, sample: 0 }
     }
 
-    fn next_sample(&mut self) -> f32 {
+    fn next_sample(&mut self) -> (f32, f32) {
         self.sample += 1;
-        (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin()
+        let l = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
+        let r = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
+        (l, r)
     }
 
     fn is_playing(&self, sample: u64) -> bool {
