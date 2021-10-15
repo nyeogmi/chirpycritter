@@ -134,7 +134,7 @@ impl SongState {
         if self.ticks_to_wait > 0 {
             self.ticks_to_wait -= 1;
         }
-        self.degrade_voices(config);
+        self.degrade_voices(config, self.song_samples_per_beat);
 
         while !self.song_over() && self.ticks_to_wait == 0 {
             match self.song.data[self.cursor] {
@@ -174,7 +174,7 @@ impl SongState {
         self.playing[ix] = voice_to_use;
     }
 
-    fn degrade_voices(&mut self, config: SynthConfig) {
+    fn degrade_voices(&mut self, config: SynthConfig, samples_per_beat: u64) {
         for v in self.playing.iter_mut() {
             if let Some(v2) = v {
                 if v2.duration_left == 1 {
@@ -187,7 +187,7 @@ impl SongState {
                         Time { 
                             second: v2.sample as f32 / config.sample_rate as f32,
                             beat: v2.sample as f32 / self.song_samples_per_beat as f32,
-                            sample: v2.sample,
+                            beats_per_second: config.sample_rate as f32 / samples_per_beat as f32,
                         }
                     ) {
                         *v = None
@@ -204,12 +204,19 @@ impl Voice {
     fn render(&mut self, config: SynthConfig, samples_per_beat: u64) -> f32 {
         self.sample += 1;
 
+        let beats_per_second = config.sample_rate as f32 / samples_per_beat as f32;
+
         self.generator.sample(
             self.released_at.map(|x| x as f32 / config.sample_rate as f32), 
             Time { 
+                second: 1.0 / config.sample_rate as f32,
+                beat: 1.0 / samples_per_beat as f32,
+                beats_per_second,
+            },
+            Time { 
                 second: self.sample as f32 / config.sample_rate as f32,
                 beat: self.sample as f32 / samples_per_beat as f32,
-                sample: self.sample,
+                beats_per_second,
             }
         )
     }

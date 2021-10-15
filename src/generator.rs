@@ -1,12 +1,13 @@
 use std::f32::consts::PI;
 
-use crate::{Time, envelope::{ADSRf, Envelope, LFOf}};
+use crate::{Time, envelope::*};
 
 #[derive(Clone, Copy)]
 pub struct Generator {
     osc1: Generator1,
     osc2: Option<Generator1>,
 }
+
 
 #[derive(Clone, Copy)]
 pub struct Generator1 {
@@ -16,7 +17,6 @@ pub struct Generator1 {
     pub waveform: Waveform,
     pub pulse_width: Envelope,
 
-    pub time: Time,
     pub waveform_progress: f32,
 }
 
@@ -35,11 +35,18 @@ impl Generator {
                     base: 0.0, 
                     adsr: Some(ADSRf { low: 0.0, high: 0.3, attack: 0.0, decay: 0.2, sustain: 0.2, release: 0.4 }) ,
                     lfo: None,
+                    echoes: Some(Echoes {
+                        n_times: 4,
+                        sync: true,
+                        period: 0.25,
+                        decay: 0.8,
+                    }),
                 },
                 frequency_offset: Envelope { 
                     base: 0.0, 
                     adsr: None,
                     lfo: None,
+                    echoes: None,
                 }, 
                 frequency,
                 waveform: Waveform::Sine,
@@ -47,16 +54,19 @@ impl Generator {
                     base: 0.0, 
                     adsr: Some(ADSRf { low: 0.0, high: 0.3, attack: 0.3, decay: 0.2, sustain: 0.05, release: 0.1}),
                     lfo: None,
+                    echoes: None,
                 },
 
-                time: Time::ZERO,
                 waveform_progress: 0.0,
             },
+            osc2: None,
+            /*
             osc2: Some(Generator1 {
                 gain: Envelope { 
                     base: 0.0, 
                     adsr: Some(ADSRf { low: 0.0, high: 0.1, attack: 0.0, decay: 0.2, sustain: 0.2, release: 0.1 }) ,
                     lfo: None,
+                    echoes: None,
                 },
                 frequency_offset: Envelope { 
                     base: 0.0, 
@@ -68,10 +78,11 @@ impl Generator {
                         high: 0.5,
 
                         sync: true,
-                        frequency: 1.0,
+                        period: 1.0,
                         pulse_width: 0.0,
                         waveform: Waveform::Sine,
                     }),
+                    echoes: None,
                 }, 
                 frequency,
                 waveform: Waveform::Square,
@@ -79,11 +90,12 @@ impl Generator {
                     base: 0.0, 
                     adsr: None,
                     lfo: None,
+                    echoes: None,
                 },
 
-                time: Time::ZERO,
                 waveform_progress: 0.0,
             }),
+            */
         }
     }
 
@@ -99,10 +111,10 @@ impl Generator {
         return false
     }
 
-    pub fn sample(&mut self, released_at: Option<f32>, time: Time) -> f32 {
-        let mut sum = self.osc1.sample(released_at, time);
+    pub fn sample(&mut self, released_at: Option<f32>, delta_time: Time, time: Time) -> f32 {
+        let mut sum = self.osc1.sample(released_at, delta_time, time);
         if let Some(osc2) = &mut self.osc2 {
-            sum += osc2.sample(released_at, time);
+            sum += osc2.sample(released_at, delta_time, time);
         }
         sum
     }
@@ -113,10 +125,7 @@ impl Generator1 {
         self.gain.is_playing(released_at, time)
     }
 
-    pub fn sample(&mut self, released_at: Option<f32>, time: Time) -> f32 {
-        let delta_time = time.delta(self.time);
-        self.time = time;
-
+    pub fn sample(&mut self, released_at: Option<f32>, delta_time: Time, time: Time) -> f32 {
         let mut frequency = self.frequency as f32;
         frequency = transpose(frequency, self.frequency_offset.at(released_at, time));
 

@@ -5,21 +5,49 @@ pub struct Envelope {
     pub base: f32,
     pub adsr: Option<ADSRf>,
     pub lfo: Option<LFOf>,
+    pub echoes: Option<Echoes>,
 }
 
 impl Envelope {
-    pub fn at(&self, released_at: Option<f32>, t: Time) -> f32 {
+    pub fn at(&self, released_at: Option<f32>, mut t: Time) -> f32 {
+        let mut decay = 1.0;
+        if let Some(e) = self.echoes {
+            // NOTE: For fun and ease, echoes only affect the second and not the beat
+            if e.sync {
+                let echo_n = (t.beat / e.period).floor();
+                if echo_n < e.n_times as f32 {
+                    t.shift_back_beats(echo_n * e.period)
+                }
+                decay = e.decay.powf(echo_n)
+            }
+            else {
+                let echo_n = (t.second / e.period).floor();
+                if echo_n < e.n_times as f32 {
+                    t.shift_back_seconds(echo_n * e.period)
+                }
+                decay = e.decay.powf(echo_n)
+            }
+        }
+
         let mut value = self.base;
         if let Some(adsr) = self.adsr {
-            value += adsr.at(released_at, t);
+            value += adsr.at(decay, released_at, t);
         }
         if let Some(lfo) = self.lfo {
-            value += lfo.at(released_at, t);
+            value += lfo.at(decay, released_at, t);
         }
         value
     }
 
-    pub fn is_playing(&self, released_at: Option<f32>, t: Time) -> bool {
+    pub fn is_playing(&self, released_at: Option<f32>, mut t: Time) -> bool {
+        if let Some(e) = self.echoes {
+            if e.sync {
+                t.shift_back_beats(e.n_times as f32 * e.period)
+            }
+            else {
+                t.shift_back_seconds(e.n_times as f32 * e.period)
+            }
+        }
         if let Some(ra) = released_at { 
             if let Some(adsr) = self.adsr {
                 return t.second < ra + adsr.release
@@ -61,18 +89,20 @@ fn lerp(amt: f32, x0: f32, x1: f32) -> f32 {
 }
 
 impl ADSRf {
-    fn at(&self, released_at: Option<f32>, t: Time) -> f32 {
+    fn at(&self, dampen: f32, released_at: Option<f32>, t: Time) -> f32 {
         if let Some(released_at) = released_at {
             if t.second > released_at {
                 let prerelease = self.atperc_prerelease(released_at);
                 let release_perc = (t.second - released_at) / self.release;
                 let base = lerp(moog_decay(1.0 - release_perc), 0.0, prerelease);
-                return lerp(base, self.low, self.high);
+                let dampen_base = lerp(base, 0.0, dampen);
+                return lerp(dampen_base, self.low, self.high);
             }
         }  
 
         let base = self.atperc_prerelease(t.second);
-        return lerp(base, self.low, self.high);
+        let dampen_base = lerp(base, 0.0, dampen);
+        return lerp(dampen_base, self.low, self.high);
     }
 
     fn atperc_prerelease(&self, t: f32) -> f32 {
@@ -95,7 +125,7 @@ pub struct LFOf {
     pub high: f32,
 
     pub sync: bool,
-    pub frequency: f32,
+    pub period: f32,
 
     pub pulse_width: f32,
     pub waveform: Waveform,
@@ -103,20 +133,29 @@ pub struct LFOf {
 }
 
 impl LFOf {
-    fn at(&self, released_at: Option<f32>, t: Time) -> f32 {
-        let mul = if let Some(adsr) = self.adsr {
-            adsr.at(released_at, t)
+    fn at(&self, dampen: f32, released_at: Option<f32>, t: Time) -> f32 {
+        let mul = dampen * if let Some(adsr) = self.adsr {
+            adsr.at(1.0, released_at, t)
         } else {
             1.0
         };
 
         let cycle_t = if self.sync {
-            t.beat * self.frequency
+            t.beat / self.period
         } else {
-            t.second * self.frequency
+            t.second / self.period
         };
 
         let wf = self.waveform.at(self.pulse_width, cycle_t - cycle_t.floor()) * mul;
         lerp((wf + 1.0) / 2.0, self.low, self.high)
     }
+}
+
+#[derive(Clone, Copy)]
+pub struct Echoes {
+    pub n_times: usize,
+
+    pub sync: bool,
+    pub period: f32,  // beats
+    pub decay: f32,
 }
