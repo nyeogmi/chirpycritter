@@ -1,6 +1,6 @@
 use std::{borrow::Cow};
 
-use crate::{Generator, Time};
+use crate::{Generator, Spread, Time, lerp, sample_patch};
 use crate::{Song, SynthConfig, Synthesizer};
 
 const VOICES: usize = 16;
@@ -33,7 +33,9 @@ pub struct Voice {
     note_ix: u64,
 
     duration_left: u16,
-    generator: Generator,  // TODO: Program struct
+    generator_l: Generator,  
+    generator_r: Generator,  
+    spread: Spread,
 
     sample: u64,
     released_at: Option<u64>,
@@ -54,7 +56,7 @@ impl Synthesizer for Stock {
         }
     }
 
-    fn next_sample(&mut self) -> f32 {
+    fn next_sample(&mut self) -> (f32, f32) {
         self.sample += 1;
         self.song_state.next_sample(self.config)
     }
@@ -100,7 +102,7 @@ impl SongState {
         }
     }
 
-    fn next_sample(&mut self, config: SynthConfig) -> f32 {
+    fn next_sample(&mut self, config: SynthConfig) -> (f32, f32) {
         if self.song_sample % self.song_samples_per_tick == 0 {
             self.on_tick(config);
         }
@@ -120,14 +122,17 @@ impl SongState {
         samp_result
     }
 
-    fn render(&mut self, config: SynthConfig) -> f32 {
-        let mut sum = 0.0;
+    fn render(&mut self, config: SynthConfig) -> (f32, f32) {
+        let mut sum_l = 0.0;
+        let mut sum_r = 0.0;
         for v in self.playing.iter_mut() {
             if let Some(v) = v {
-                sum += v.render(config, self.song_samples_per_beat);
+                let (l, r) = v.render(config, self.song_samples_per_beat);
+                sum_l += l;
+                sum_r += r;
             }
         }
-        sum
+        (sum_l, sum_r)
     }
 
     fn on_tick(&mut self, config: SynthConfig) {
@@ -157,11 +162,15 @@ impl SongState {
         let note_ix = self.song_next_note;
         self.song_next_note += 1;
 
+        let patch = sample_patch(); // TODO: Use program
+
         let voice_to_use = Some(Voice { 
             note_ix, 
 
             duration_left: duration, 
-            generator: Generator::new_for(program, frequency), 
+            generator_l: Generator::new_for(patch.left(frequency)),
+            generator_r: Generator::new_for(patch.right(frequency)),
+            spread: patch.spread,
 
             sample: 0 ,
             released_at: None,
@@ -182,14 +191,15 @@ impl SongState {
                     v2.duration_left = 0;
                 }
                 else if v2.duration_left == 0 {
-                    if !v2.generator.is_playing(
-                        v2.released_at.map(|x| x as f32 / config.sample_rate as f32), 
-                        Time { 
-                            second: v2.sample as f32 / config.sample_rate as f32,
-                            beat: v2.sample as f32 / self.song_samples_per_beat as f32,
-                            beats_per_second: config.sample_rate as f32 / samples_per_beat as f32,
-                        }
-                    ) {
+                    let released_at = v2.released_at.map(|x| x as f32 / config.sample_rate as f32);
+                    let time = Time { 
+                        second: v2.sample as f32 / config.sample_rate as f32,
+                        beat: v2.sample as f32 / self.song_samples_per_beat as f32,
+                        beats_per_second: config.sample_rate as f32 / samples_per_beat as f32,
+                    };
+
+                    // TODO: Only look at generator l? our spread feature can't make these diverge
+                    if !(v2.generator_l.is_playing(released_at, time) || v2.generator_r.is_playing(released_at, time)) {
                         *v = None
                     }
                 }
@@ -201,23 +211,32 @@ impl SongState {
     }
 }
 impl Voice {
-    fn render(&mut self, config: SynthConfig, samples_per_beat: u64) -> f32 {
+    fn render(&mut self, config: SynthConfig, samples_per_beat: u64) -> (f32, f32) {
         self.sample += 1;
 
         let beats_per_second = config.sample_rate as f32 / samples_per_beat as f32;
 
-        self.generator.sample(
-            self.released_at.map(|x| x as f32 / config.sample_rate as f32), 
-            Time { 
-                second: 1.0 / config.sample_rate as f32,
-                beat: 1.0 / samples_per_beat as f32,
-                beats_per_second,
-            },
-            Time { 
-                second: self.sample as f32 / config.sample_rate as f32,
-                beat: self.sample as f32 / samples_per_beat as f32,
-                beats_per_second,
-            }
-        )
+        let released_at = self.released_at.map(|x| x as f32 / config.sample_rate as f32);
+        let delta_time = Time { 
+            second: 1.0 / config.sample_rate as f32,
+            beat: 1.0 / samples_per_beat as f32,
+            beats_per_second,
+        };
+        let time = Time { 
+            second: self.sample as f32 / config.sample_rate as f32,
+            beat: self.sample as f32 / samples_per_beat as f32,
+            beats_per_second,
+        };
+
+        let pure_l = self.generator_l.sample(released_at, delta_time, time);
+        let pure_r = self.generator_r.sample(released_at, delta_time, time);
+
+        // Move closer
+        // TODO: Use a real panning function for this
+        let (l, r) = (
+            lerp(lerp(self.spread.amount, 0.5, 0.0), pure_l, pure_r), 
+            lerp(lerp(self.spread.amount, 0.5, 0.0), pure_r, pure_l)
+        );
+        (l, r)
     }
 }

@@ -1,6 +1,6 @@
 pub trait Synthesizer: 'static+Send {
     fn new(config: SynthConfig) -> Self;
-    fn next_sample(&mut self) -> f32;
+    fn next_sample(&mut self) -> (f32, f32);
     fn is_playing(&self, sample: u64) -> bool;
 }
 

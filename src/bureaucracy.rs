@@ -46,10 +46,11 @@ impl<S: Synthesizer> SynthEnvironment<S> {
         let synth_ref = Arc::new(Mutex::new(S::new(synth_config)));
 
         let sr = synth_ref.clone();
-        let stream = match sample_format {
-            cpal::SampleFormat::F32 => Self::run::<f32>(sr, &device, &stream_config, channels),
-            cpal::SampleFormat::I16 => Self::run::<i16>(sr, &device, &stream_config, channels),
-            cpal::SampleFormat::U16 => Self::run::<u16>(sr, &device, &stream_config, channels),
+        let stream = match (sample_format, channels) {
+            (cpal::SampleFormat::F32, 2) => Self::run_stereo::<f32>(sr, &device, &stream_config),
+            (cpal::SampleFormat::I16, 2) => Self::run_stereo::<i16>(sr, &device, &stream_config),
+            (cpal::SampleFormat::U16, 2) => Self::run_stereo::<u16>(sr, &device, &stream_config),
+            _ => panic!("don't know how to run in mono yet")
         };
 
         SynthEnvironment {
@@ -65,7 +66,7 @@ impl<S: Synthesizer> SynthEnvironment<S> {
         f(&mut *s)
     }
 
-    fn run<T>(synth_ref: Arc<Mutex<S>>, device: &cpal::Device, config: &cpal::StreamConfig, channels: usize) -> Stream
+    fn run_stereo<T>(synth_ref: Arc<Mutex<S>>, device: &cpal::Device, config: &cpal::StreamConfig) -> Stream
     where
         T: cpal::Sample,
     {
@@ -75,7 +76,7 @@ impl<S: Synthesizer> SynthEnvironment<S> {
             config,
             move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
                 let mut s = synth_ref.lock().unwrap(); // TODO: What the fuck is a poisonerror
-                write_data(data, channels, &mut *s)
+                write_data_stereo(data, &mut *s)
             },
             err_fn,
         ).unwrap();
@@ -85,15 +86,14 @@ impl<S: Synthesizer> SynthEnvironment<S> {
 
 }
 
-fn write_data<S, T>(output: &mut [T], channels: usize, synth: &mut S)
+fn write_data_stereo<S, T>(output: &mut [T], synth: &mut S)
 where
     S: Synthesizer,
     T: cpal::Sample,
 {
-    for frame in output.chunks_mut(channels) {
-        let value: T = cpal::Sample::from::<f32>(&synth.next_sample());
-        for sample in frame.iter_mut() {
-            *sample = value;
-        }
+    for frame in output.chunks_mut(2) {
+        let (l, r) = synth.next_sample();
+        frame[0] = cpal::Sample::from::<f32>(&l);
+        frame[1] = cpal::Sample::from::<f32>(&r);
     }
 }

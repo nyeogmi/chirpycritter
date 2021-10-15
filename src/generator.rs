@@ -1,6 +1,4 @@
-use std::f32::consts::PI;
-
-use crate::{Time, envelope::*};
+use crate::{Patch, Patch1, Time};
 
 #[derive(Clone, Copy)]
 pub struct Generator {
@@ -8,94 +6,19 @@ pub struct Generator {
     osc2: Option<Generator1>,
 }
 
-
 #[derive(Clone, Copy)]
 pub struct Generator1 {
-    pub gain: Envelope,
-    pub frequency_offset: Envelope,  // TODO: Make sure this is in semitones
-    pub frequency: u16, 
-    pub waveform: Waveform,
-    pub pulse_width: Envelope,
-
+    pub patch: Patch1,
     pub waveform_progress: f32,
 }
 
-#[derive(Clone, Copy)]
-pub enum Waveform {
-    Sine,
-    Square,
-    Saw,
-}
-
 impl Generator {
-    pub fn new_for(_program: u16, frequency: u16) -> Generator {
-        Generator { 
-            osc1: Generator1 {
-                gain: Envelope { 
-                    base: 0.0, 
-                    adsr: Some(ADSRf { low: 0.0, high: 0.3, attack: 0.0, decay: 0.2, sustain: 0.2, release: 0.4 }) ,
-                    lfo: None,
-                    echoes: Some(Echoes {
-                        n_times: 4,
-                        sync: true,
-                        period: 0.25,
-                        decay: 0.8,
-                    }),
-                },
-                frequency_offset: Envelope { 
-                    base: 0.0, 
-                    adsr: None,
-                    lfo: None,
-                    echoes: None,
-                }, 
-                frequency,
-                waveform: Waveform::Sine,
-                pulse_width: Envelope { 
-                    base: 0.0, 
-                    adsr: Some(ADSRf { low: 0.0, high: 0.3, attack: 0.3, decay: 0.2, sustain: 0.05, release: 0.1}),
-                    lfo: None,
-                    echoes: None,
-                },
-
-                waveform_progress: 0.0,
-            },
-            osc2: None,
-            /*
-            osc2: Some(Generator1 {
-                gain: Envelope { 
-                    base: 0.0, 
-                    adsr: Some(ADSRf { low: 0.0, high: 0.1, attack: 0.0, decay: 0.2, sustain: 0.2, release: 0.1 }) ,
-                    lfo: None,
-                    echoes: None,
-                },
-                frequency_offset: Envelope { 
-                    base: 0.0, 
-                    adsr: None ,
-                    lfo: Some(LFOf {
-                        adsr: None,
-
-                        low: -0.5,
-                        high: 0.5,
-
-                        sync: true,
-                        period: 1.0,
-                        pulse_width: 0.0,
-                        waveform: Waveform::Sine,
-                    }),
-                    echoes: None,
-                }, 
-                frequency,
-                waveform: Waveform::Square,
-                pulse_width: Envelope { 
-                    base: 0.0, 
-                    adsr: None,
-                    lfo: None,
-                    echoes: None,
-                },
-
-                waveform_progress: 0.0,
+    pub fn new_for(patch: Patch) -> Generator {
+        Generator {
+            osc1: Generator1 { patch: patch.osc1, waveform_progress: 0.0 },
+            osc2: patch.osc2.map(|p| { 
+                Generator1 { patch: p, waveform_progress: 0.0 }
             }),
-            */
         }
     }
 
@@ -122,40 +45,19 @@ impl Generator {
 
 impl Generator1 {
     pub fn is_playing(&self, released_at: Option<f32>, time: Time) -> bool {
-        self.gain.is_playing(released_at, time)
+        self.patch.gain.is_playing(released_at, time)
     }
 
     pub fn sample(&mut self, released_at: Option<f32>, delta_time: Time, time: Time) -> f32 {
-        let mut frequency = self.frequency as f32;
-        frequency = transpose(frequency, self.frequency_offset.at(released_at, time));
+        let mut frequency = self.patch.frequency as f32;
+        frequency = transpose(frequency, self.patch.frequency_offset.at(released_at, time));
 
         self.waveform_progress += delta_time.second as f32 * frequency as f32;
         self.waveform_progress = self.waveform_progress - self.waveform_progress.floor();
 
-        let base_wave = self.waveform.at(self.pulse_width.at(released_at, time), self.waveform_progress);
+        let base_wave = self.patch.waveform.at(self.patch.pulse_width.at(released_at, time), self.waveform_progress);
 
-        base_wave * self.gain.at(released_at, time)
-    }
-}
-
-impl Waveform {
-    pub fn at(&self, unpulse_width: f32, pos: f32) -> f32 {
-        let pulse_width = 1.0 - unpulse_width;
-        match self {
-            Waveform::Sine => {
-                let cycle_width = 0.5 + pulse_width * 0.5;
-                let pos2 = pos / cycle_width;
-                let pos2 = pos2 - pos2.floor();
-                (pos2 * 2.0 * PI).sin()
-            }
-            Waveform::Square => if pos < (0.5 * pulse_width) { -1.0 } else { 1.0 },
-            Waveform::Saw => {
-                let cycle_width = 0.5 + pulse_width * 0.5;
-                let pos2 = pos / cycle_width;
-                let pos2 = pos2 - pos2.floor();
-                pos2 * 2.0 - 1.0
-            }
-        }
+        base_wave * self.patch.gain.at(released_at, time)
     }
 }
 
