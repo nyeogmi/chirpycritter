@@ -1,5 +1,6 @@
-use std::{borrow::Cow, f32::consts::PI};
+use std::{borrow::Cow};
 
+use crate::{Generator, Time};
 use crate::{Song, SynthConfig, Synthesizer};
 
 const VOICES: usize = 16;
@@ -19,6 +20,7 @@ pub struct SongState {
     // metadata
     song_sample: u64,
     song_samples_per_tick: u64,
+    song_samples_per_beat: u64,
     song_next_note: u64,
 
     ticks_to_wait: usize,
@@ -29,9 +31,12 @@ pub struct SongState {
 #[derive(Clone, Copy)]
 pub struct Voice {
     note_ix: u64,
-    hertz: u16,
-    duration: u16,
+
+    duration_left: u16,
+    generator: Generator,  // TODO: Program struct
+
     sample: u64,
+    released_at: Option<u64>,
 }
 
 impl Synthesizer for Stock {
@@ -42,6 +47,7 @@ impl Synthesizer for Stock {
             song_state: SongState::start(config, 0, {
                 Song {
                     ticks_per_second: 1,
+                    ticks_per_beat: 1,
                     data: Cow::Borrowed(&[]),
                 }
             })
@@ -74,6 +80,9 @@ impl Stock {
 
 impl SongState {
     fn start(config: SynthConfig, started_at: u64, song: Song) -> SongState {
+        let song_samples_per_tick = (config.sample_rate / song.ticks_per_second).max(1);
+        let song_samples_per_beat = song_samples_per_tick * song.ticks_per_beat;
+
         SongState { 
             playing: [None; VOICES], 
 
@@ -81,7 +90,8 @@ impl SongState {
             ended_at: None,
 
             song_sample: 0, 
-            song_samples_per_tick: (config.sample_rate / song.ticks_per_second).max(1), 
+            song_samples_per_tick,
+            song_samples_per_beat,
             song_next_note: 0,
 
             ticks_to_wait: 0,
@@ -92,7 +102,7 @@ impl SongState {
 
     fn next_sample(&mut self, config: SynthConfig) -> f32 {
         if self.song_sample % self.song_samples_per_tick == 0 {
-            self.on_tick();
+            self.on_tick(config);
         }
 
         let samp_result = self.render(config);
@@ -114,22 +124,22 @@ impl SongState {
         let mut sum = 0.0;
         for v in self.playing.iter_mut() {
             if let Some(v) = v {
-                sum += v.render(config);
+                sum += v.render(config, self.song_samples_per_beat);
             }
         }
         sum
     }
 
-    fn on_tick(&mut self) {
+    fn on_tick(&mut self, config: SynthConfig) {
         if self.ticks_to_wait > 0 {
             self.ticks_to_wait -= 1;
         }
-        self.degrade_voices();
+        self.degrade_voices(config);
 
         while !self.song_over() && self.ticks_to_wait == 0 {
             match self.song.data[self.cursor] {
-                crate::Packet::Play(hertz, duration) => {
-                    self.add_voice(hertz, duration)
+                crate::Packet::Play { program, frequency, duration } => {
+                    self.add_voice(program, frequency, duration)
                 }
                 crate::Packet::Wait(ticks) => {
                     self.ticks_to_wait += ticks as usize
@@ -143,11 +153,19 @@ impl SongState {
         !(0..self.song.data.len()).contains(&self.cursor)
     }
 
-    fn add_voice(&mut self, hertz: u16, duration: u16) {
+    fn add_voice(&mut self, program: u16, frequency: u16, duration: u16) {
         let note_ix = self.song_next_note;
         self.song_next_note += 1;
 
-        let voice_to_use = Some(Voice { note_ix, hertz, duration, sample: 0 });
+        let voice_to_use = Some(Voice { 
+            note_ix, 
+
+            duration_left: duration, 
+            generator: Generator::new_for(program, frequency), 
+
+            sample: 0 ,
+            released_at: None,
+        });
         for v in self.playing.iter_mut() {
             if let None = v { *v = voice_to_use; return }
         }
@@ -156,26 +174,43 @@ impl SongState {
         self.playing[ix] = voice_to_use;
     }
 
-    fn degrade_voices(&mut self) {
+    fn degrade_voices(&mut self, config: SynthConfig) {
         for v in self.playing.iter_mut() {
             if let Some(v2) = v {
-                if v2.duration == 1 {
-                    *v = None;
+                if v2.duration_left == 1 {
+                    v2.released_at = Some(v2.sample);
+                    v2.duration_left = 0;
+                }
+                else if v2.duration_left == 0 {
+                    if !v2.generator.is_playing(
+                        v2.released_at.map(|x| x as f32 / config.sample_rate as f32), 
+                        Time { 
+                            second: v2.sample as f32 / config.sample_rate as f32,
+                            beat: v2.sample as f32 / self.song_samples_per_beat as f32,
+                            sample: v2.sample,
+                        }
+                    ) {
+                        *v = None
+                    }
                 }
                 else {
-                    v2.duration -= 1
+                    v2.duration_left -= 1
                 }
             }
         }
     }
 }
 impl Voice {
-    fn render(&mut self, config: SynthConfig) -> f32 {
-        let samp = self.sample;
-
-        let result = (samp as f32 * self.hertz as f32 * 2.0 * PI / config.sample_rate as f32).sin();
+    fn render(&mut self, config: SynthConfig, samples_per_beat: u64) -> f32 {
         self.sample += 1;
 
-        result
+        self.generator.sample(
+            self.released_at.map(|x| x as f32 / config.sample_rate as f32), 
+            Time { 
+                second: self.sample as f32 / config.sample_rate as f32,
+                beat: self.sample as f32 / samples_per_beat as f32,
+                sample: self.sample,
+            }
+        )
     }
 }
