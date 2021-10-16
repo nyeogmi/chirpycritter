@@ -1,7 +1,7 @@
 use crate::*;
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct Generator {
     osc1: StereoOscImpl,
     osc2: Option<StereoOscImpl>,
@@ -10,13 +10,13 @@ pub(crate) struct Generator {
     vcf1_r: VCFImpl,  
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum StereoOscImpl {
     Mono(OscImpl),
     Stereo(Spread, OscImpl, OscImpl),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct OscImpl {
     pub patch: Osc,
     pub waveform_progress: f32,
@@ -37,11 +37,11 @@ impl Generator {
     }
 
     pub(crate) fn is_playing(&self, trigger: Trigger) -> bool {
-        if self.modulators.gain1.is_playing(trigger.released_at, trigger.sample) {
+        if self.modulators.gain1.is_playing(trigger.release_at, trigger.sample) {
             return true
         }
         if let Some(_) = &self.osc2 {
-            if self.modulators.gain2.is_playing(trigger.released_at, trigger.sample) {
+            if self.modulators.gain2.is_playing(trigger.release_at, trigger.sample) {
                 return true
             }
         }

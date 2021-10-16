@@ -28,11 +28,11 @@ impl LFO<f32> {
 }
 
 impl LFO<u64> {
-    pub(crate) fn at(&self, released_at: Option<u64>, t: u64) -> f32 {
+    pub(crate) fn at(&self, release_at: u64, t: u64) -> f32 {
         if self.period == 0 { return 0.0 };
 
         let mul = if let Some(adsr) = self.adsr {
-            adsr.at(released_at, t)
+            adsr.at(release_at, t)
         } else {
             1.0
         };

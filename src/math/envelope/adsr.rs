@@ -24,14 +24,12 @@ impl ADSR<f32> {
 }
 
 impl ADSR<u64> {
-    pub(crate) fn at(&self, released_at: Option<u64>, t: u64) -> f32 {
-        if let Some(released_at) = released_at {
-            if t > released_at {
-                let prerelease = self.atperc_prerelease(released_at);
-                let release_perc = percentage(t - released_at, self.release);
-                return lerp(moog_decay(1.0 - release_perc), 0.0, prerelease)
-            }
-        }  
+    pub(crate) fn at(&self, release_at: u64, t: u64) -> f32 {
+        if t > release_at {
+            let prerelease = self.atperc_prerelease(release_at);
+            let release_perc = percentage(t - release_at, self.release);
+            return lerp(moog_decay(1.0 - release_perc), 0.0, prerelease)
+        }
 
         self.atperc_prerelease(t)
     }
@@ -48,12 +46,8 @@ impl ADSR<u64> {
         return self.sustain;
     }
 
-    pub(crate) fn is_playing(&self, released_at: Option<u64>, sample: u64) -> bool {
-        if let Some(ra) = released_at { 
-            sample < ra + self.release
-        } else {
-            false
-        }
+    pub(crate) fn is_playing(&self, release_at: u64, sample: u64) -> bool {
+        sample < release_at + self.release
     }
 }
 

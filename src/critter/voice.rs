@@ -1,14 +1,12 @@
 use crate::*;
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct Voice {
     pub(super) note_ix: u64,
 
     // TODO: Provide a constructor to populate these
-    pub duration_left: u16,
     pub generator: Generator,  
-
     pub trigger: Trigger,
 }
 
@@ -17,39 +15,24 @@ impl Voice {
         Voice { 
             note_ix, 
 
-            duration_left: duration, 
             generator: Generator::new_for(config, patch.apply_time(config)),
 
             trigger: Trigger { 
                 config,
                 sample: 0,
                 frequency,
-                released_at: None, 
+                release_at: duration as u64 * config.samples_per_tick, 
             }
         }
     }
 
-    pub(super) fn render(&mut self) -> (f32, f32) {
-        self.trigger.sample += 1;
-        self.generator.sample(self.trigger)
-    }
-
-    pub(super) fn degrade(v: &mut Option<Voice>) {
-        if let Some(v2) = v {
-            if v2.duration_left == 1 {
-                v2.trigger.released_at = Some(v2.trigger.sample);
-                v2.duration_left = 0;
-            }
-            else if v2.duration_left == 0 {
-                // TODO: Only look at generator l? our spread feature can't make these diverge
-                if !(v2.generator.is_playing(v2.trigger)) {
-                    *v = None
-                }
-            }
-            else {
-                v2.duration_left -= 1
-            }
+    pub(super) fn populate<Buf: SynthBuf>(&mut self, buf: &mut Buf) -> bool {
+        for i in 0..buf.len() {
+            // println!("sampling for: {:?}", self.trigger.sample);
+            self.trigger.sample += 1;
+            let (l, r) = self.generator.sample(self.trigger);
+            buf.set(i, (l, r))
         }
+        self.generator.is_playing(self.trigger)
     }
-
 }

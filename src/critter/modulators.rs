@@ -41,14 +41,14 @@ impl Modulators<u64> {
         ModulatorSnapshot {
             spread_pitch_offset: 0.0,
             echo: echo,
-            gain1: self.gain1.at(trigger.released_at, sample),
-            gain2: self.gain2.at(trigger.released_at, sample),
-            env1: self.env1.at(trigger.released_at, sample),
-            env2: self.env2.at(trigger.released_at, sample),
-            env3: self.env3.at(trigger.released_at, sample),
-            lfo1: self.lfo1.at(trigger.released_at, sample),
-            lfo2: self.lfo2.at(trigger.released_at, sample),
-            lfo3: self.lfo3.at(trigger.released_at, sample),
+            gain1: self.gain1.at(trigger.release_at, sample),
+            gain2: self.gain2.at(trigger.release_at, sample),
+            env1: self.env1.at(trigger.release_at, sample),
+            env2: self.env2.at(trigger.release_at, sample),
+            env3: self.env3.at(trigger.release_at, sample),
+            lfo1: self.lfo1.at(trigger.release_at, sample),
+            lfo2: self.lfo2.at(trigger.release_at, sample),
+            lfo3: self.lfo3.at(trigger.release_at, sample),
         }
     }
 }

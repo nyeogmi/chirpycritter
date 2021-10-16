@@ -11,10 +11,15 @@ pub trait SynthBuf {
 }
 
 pub struct StereoBuf { pub values: [f32; 1024] }
+pub struct BorrowedBuf<'a> { pub values: &'a mut [f32] }
 
 impl StereoBuf {
-    pub(crate) fn new() -> StereoBuf {
+    pub fn new() -> StereoBuf {
         StereoBuf { values: [0.0; 1024] }
+    }
+
+    pub fn up_to<'a>(&'a mut self, len: usize) -> BorrowedBuf<'a> {
+        BorrowedBuf { values: &mut self.values[..len * 2] }
     }
 }
 
@@ -27,7 +32,20 @@ impl SynthBuf for StereoBuf {
 
     fn set(&mut self, ix: usize, samp: (f32, f32)) {
         self.values[ix * 2] = samp.0;
-        self.values[ix * 2] = samp.1;
+        self.values[ix * 2 + 1] = samp.1;
+    }
+}
+
+impl<'a> SynthBuf for BorrowedBuf<'a> {
+    fn len(&self) -> usize { self.values.len() / 2 }
+
+    fn get(&self, ix: usize) -> (f32, f32) {
+        (self.values[ix * 2], self.values[ix * 2 + 1])
+    }
+
+    fn set(&mut self, ix: usize, samp: (f32, f32)) {
+        self.values[ix * 2] = samp.0;
+        self.values[ix * 2 + 1] = samp.1;
     }
 }
 

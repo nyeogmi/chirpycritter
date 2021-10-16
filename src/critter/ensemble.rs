@@ -11,9 +11,9 @@ pub(super) struct Ensemble {
     // metadata
     config: TimeConfig,
     song_sample: u64,
+    song_next_event_at: u64,
     song_next_note: u64,
 
-    ticks_to_wait: usize,
     cursor: usize,
     song: Song,
 }
@@ -30,39 +30,62 @@ impl Ensemble {
         };
 
         Ensemble { 
-            playing: [None; VOICES], 
+            playing: [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None], 
 
             started_at,
             ended_at: None,
 
             config,
             song_sample: 0, 
+            song_next_event_at: 0,
             song_next_note: 0,
 
-            ticks_to_wait: 0,
             cursor: 0, 
             song,
         }
     }
 
-    pub(super) fn next_sample(&mut self) -> (f32, f32) {
-        if self.song_sample % self.config.samples_per_tick == 0 {
-            self.on_tick();
-        }
+    pub(super) fn populate<Buf: SynthBuf>(&mut self, buf: &mut Buf) {
+        let mut buf_i: usize = 0;
 
-        let samp_result = self.render();
+        for i in 0..buf.len() { buf.set(i, (0.0, 0.0)); }
+        let mut spare_buf = StereoBuf::new();
 
-        self.song_sample += 1;
+        loop {
+            let samples_needed = buf.len() - buf_i;
+            if samples_needed <= 0 { break; }
 
-        if let None = self.ended_at {
-            if self.song_over() {
-                if self.playing.iter().all(|i| i.is_none()) {
-                    self.ended_at = Some(self.song_sample)
+            if self.song_sample == self.song_next_event_at { self.on_deadline_hit(); }
+
+            let samples_available = (self.song_next_event_at - self.song_sample) as usize;
+            let samples_to_take = samples_available.min(samples_needed);
+
+            let mut cut_buf = spare_buf.up_to(samples_to_take);
+
+            for v in self.playing.iter_mut() {
+                if let Some(v2) = v {
+                    let playing = v2.populate(&mut cut_buf);
+                    if !playing { *v = None; }
+
+                    for i in 0..cut_buf.len() {
+                        let (old_l, old_r) = buf.get(buf_i + i as usize);
+                        let (new_l, new_r) = cut_buf.get(i);
+                        buf.set(buf_i + i as usize, (old_l + new_l, old_r + new_r));
+                    }
+                }
+            }
+
+            self.song_sample += samples_to_take as u64;
+            buf_i += samples_to_take;
+
+            if let None = self.ended_at {
+                if self.song_over() {
+                    if self.playing.iter().all(|i| i.is_none()) {
+                        self.ended_at = Some(self.song_sample)
+                    }
                 }
             }
         }
-        
-        samp_result
     }
 
     pub(super) fn is_playing(&self, sample: u64) -> bool {
@@ -77,36 +100,22 @@ impl Ensemble {
         return true
     }
 
-    fn render(&mut self) -> (f32, f32) {
-        let mut sum_l = 0.0;
-        let mut sum_r = 0.0;
-        for v in self.playing.iter_mut() {
-            if let Some(v) = v {
-                let (l, r) = v.render();
-                sum_l += l;
-                sum_r += r;
-            }
-        }
-        (sum_l, sum_r)
-    }
-
-    fn on_tick(&mut self) {
-        if self.ticks_to_wait > 0 {
-            self.ticks_to_wait -= 1;
-        }
-        self.degrade_voices();
-
-        while !self.song_over() && self.ticks_to_wait == 0 {
+    fn on_deadline_hit(&mut self) {
+        while !self.song_over() {
             match self.song.data[self.cursor] {
                 crate::Packet::Play { channel, frequency, duration } => {
-                    self.add_voice(channel, frequency, duration)
+                    self.add_voice(channel, frequency, duration);
+                    self.cursor += 1;
                 }
                 crate::Packet::Wait(ticks) => {
-                    self.ticks_to_wait += ticks as usize
+                    self.song_next_event_at = self.song_sample + ticks as u64 * self.config.samples_per_tick;
+                    self.cursor += 1;
+                    break;
                 }
             }
-            self.cursor += 1;
         }
+
+        if self.song_over() { self.song_next_event_at = u64::MAX; }
     }
 
     fn song_over(&self) -> bool {
@@ -124,13 +133,7 @@ impl Ensemble {
             if let None = v { *v = voice_to_use; return }
         }
 
-        let (ix, _) = self.playing.iter().enumerate().min_by_key(|(_, x)| { x.unwrap().note_ix }).unwrap();
+        let (ix, _) = self.playing.iter().enumerate().min_by_key(|(_, x)| { x.as_ref().unwrap().note_ix }).unwrap();
         self.playing[ix] = voice_to_use;
-    }
-
-    fn degrade_voices(&mut self) {
-        for v in self.playing.iter_mut() {
-            Voice::degrade(v);
-        }
     }
 }

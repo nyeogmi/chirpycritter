@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct VCFImpl {
     patch: VCF,
     lp: MoogLP,

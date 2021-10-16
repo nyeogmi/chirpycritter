@@ -5,7 +5,7 @@ pub(crate) struct Trigger {
     pub config: TimeConfig,
     pub sample: u64,
     pub frequency: u16,
-    pub released_at: Option<u64>,
+    pub release_at: u64,
 
     /*
     pub n_retriggers: usize,
