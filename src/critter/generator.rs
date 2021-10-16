@@ -1,5 +1,9 @@
+use std::ops::Range;
+
 use crate::*;
 use super::*;
+
+use fastapprox::faster::pow2 as fast_pow2;
 
 #[derive(Clone)]
 pub(crate) struct Generator {
@@ -36,42 +40,36 @@ impl Generator {
         }
     }
 
-    pub(crate) fn is_playing(&self, trigger: Trigger) -> bool {
-        if self.modulators.gain1.is_playing(trigger.release_at, trigger.sample) {
+    pub(crate) fn is_playing(&self, trigger: Trigger, sample: u64) -> bool {
+        if self.modulators.gain1.is_playing(trigger.release_at, sample) {
             return true
         }
         if let Some(_) = &self.osc2 {
-            if self.modulators.gain2.is_playing(trigger.release_at, trigger.sample) {
+            if self.modulators.gain2.is_playing(trigger.release_at, sample) {
                 return true
             }
         }
         return false
     }
 
-    pub(crate) fn sample(&mut self, trigger: Trigger) -> (f32, f32) {
-        let snap = self.modulators.snap(trigger);
+    pub(crate) fn populate<Buf: StereoBuf>(&mut self, trigger: Trigger, samples: Range<u64>, buf: &mut Buf) {
+        // TODO: Take this more than once
+        let mut snap = self.modulators.snap(trigger, samples.start);
+        let gain1 = snap.gain1;
+        let gain2 = snap.gain2;
 
         match (&mut self.osc1, &mut self.osc2) {
-            // avoid right filter if we're in mono
-            (StereoOscImpl::Mono(o1), None) => {
-                let x = o1.sample(trigger, snap, snap.gain1);
-                let processed = self.vcf1_l.process(x, snap);
-                (processed, processed)
-            }
-            (StereoOscImpl::Mono(o1), Some(StereoOscImpl::Mono(o2))) => {
-                let x = o1.sample(trigger, snap, snap.gain1);
-                let y = o2.sample(trigger, snap, snap.gain1);
-                let processed = self.vcf1_l.process(x + y, snap);
-                (processed, processed)
-            }
+            // TODO: avoid right filter if we're in mono
             (osc1, osc2) => {
-                let (mut l, mut r) = osc1.sample(trigger, snap, snap.gain1);
+                osc1.populate(trigger, samples.clone(), &mut snap, gain1, |i, (l, r)| { buf.set(i, [l, r]) });
                 if let Some(osc2) = osc2 {
-                    let (l2, r2) = osc2.sample(trigger, snap, snap.gain2);
-                    l += l2;
-                    r += r2;
+                    osc2.populate(trigger, samples.clone(), &mut snap, gain2, |i, (l, r)| { 
+                        let [old_l, old_r] = buf.get(i);
+                        buf.set(i, [old_l + l, old_r + r]) 
+                    });
                 }
-                (self.vcf1_l.process(l, snap), self.vcf1_r.process(r, snap))
+                self.vcf1_l.process(&snap, &mut buf.left());
+                self.vcf1_r.process(&snap, &mut buf.right());
             }
         }
     }
@@ -86,29 +84,33 @@ impl StereoOscImpl {
         }
     }
 
-    pub(super) fn sample(&mut self, trigger: Trigger, snap: ModulatorSnapshot, gain: f32) -> (f32, f32) {
-        match self {
-            StereoOscImpl::Mono(o) => {
-                let c = o.sample(trigger, snap, gain);
-                (c, c)
-            }
-            StereoOscImpl::Stereo(spread, l, r) => {
-                let mut snap_l = snap;
-                let mut snap_r = snap;
+    pub(super) fn populate(&mut self, trigger: Trigger, samples: Range<u64>, snap: &mut ModulatorSnapshot, gain: f32, mut write: impl FnMut(usize, (f32, f32))) {
+        let mut samp = |osc: &mut OscImpl, offset: f32 | {
+            let mut frequency = trigger.frequency as f32;
+            frequency = transpose(frequency, osc.patch.frequency_offset.over(snap) + offset);
+            snap.true_frequency = frequency;
+            snap.waveform_progress = snap.true_frequency as f32 / trigger.config.samples_per_second as f32;
+            osc.sample(snap, gain)
+        };
 
-                snap_l.spread_pitch_offset -= spread.frequency;
-                snap_r.spread_pitch_offset += spread.frequency;
+        for (i, _) in samples.enumerate() {
+            match self {
+                StereoOscImpl::Mono(o) => {
+                    let c = samp(o, 0.0);
+                    write(i, (c, c))
+                }
+                StereoOscImpl::Stereo(spread, l, r) => {
+                    let pure_l = samp(l, -spread.frequency);
+                    let pure_r = samp(r, spread.frequency);
 
-                let pure_l = l.sample(trigger, snap_l, gain);
-                let pure_r = r.sample(trigger, snap_r, gain);
-
-                // Move closer
-                // TODO: Use a real panning function for this
-                let (l, r) = (
-                    lerp(lerp(spread.amount, 0.5, 0.0), pure_l, pure_r), 
-                    lerp(lerp(spread.amount, 0.5, 0.0), pure_r, pure_l)
-                );
-                (l, r)
+                    // Move closer
+                    // TODO: Use a real panning function for this
+                    let (l, r) = (
+                        lerp(lerp(spread.amount, 0.5, 0.0), pure_l, pure_r), 
+                        lerp(lerp(spread.amount, 0.5, 0.0), pure_r, pure_l)
+                    );
+                    write(i, (l, r))
+                }
             }
         }
     }
@@ -122,11 +124,8 @@ impl OscImpl {
         }
     }
 
-    pub(super) fn sample(&mut self, trigger: Trigger, snap: ModulatorSnapshot, gain: f32) -> f32 {
-        let mut frequency = trigger.frequency as f32;
-        frequency = transpose(frequency, self.patch.frequency_offset.over(snap) + snap.spread_pitch_offset);
-
-        self.waveform_progress += frequency as f32 / trigger.config.samples_per_second as f32;
+    pub(super) fn sample(&mut self, snap: &ModulatorSnapshot, gain: f32) -> f32 {
+        self.waveform_progress += snap.waveform_progress; 
         self.waveform_progress = self.waveform_progress - self.waveform_progress.floor();
 
         let base_wave = self.patch.waveform.at(self.patch.pulse_width.over(snap), self.waveform_progress);
@@ -136,5 +135,5 @@ impl OscImpl {
 }
 
 fn transpose(frequency: f32, semitones: f32) -> f32 {
-    frequency * 2.0_f32.powf(semitones/12.0)
+    frequency * fast_pow2(semitones/12.0)
 }

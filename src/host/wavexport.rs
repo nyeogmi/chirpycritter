@@ -13,7 +13,7 @@ pub fn wavexport<S: Synthesizer, W: Write + Seek>(setup: impl Fn(&mut S), file: 
     let mut s = S::new(SynthConfig { sample_rate });
     setup(&mut s);
 
-    let mut buf = StereoBuf::new();
+    let mut buf = FixedBuf::new();
     let mut samples: Vec<i16> = Vec::new();
     let mut i: u64 = 0;
     'bigloop: loop {
@@ -23,7 +23,7 @@ pub fn wavexport<S: Synthesizer, W: Write + Seek>(setup: impl Fn(&mut S), file: 
             if !s.is_playing(i) {
                 break 'bigloop;
             }
-            let (l, r) = buf.get(i2);
+            let [l, r] = buf.get(i2);
             i += 1;
             samples.push(cpal::Sample::from(&l));
             samples.push(cpal::Sample::from(&r));

@@ -8,6 +8,7 @@ pub(super) struct Voice {
     // TODO: Provide a constructor to populate these
     pub generator: Generator,  
     pub trigger: Trigger,
+    pub sample: u64,
 }
 
 impl Voice {
@@ -19,20 +20,16 @@ impl Voice {
 
             trigger: Trigger { 
                 config,
-                sample: 0,
                 frequency,
                 release_at: duration as u64 * config.samples_per_tick, 
-            }
+            },
+            sample: 0,
         }
     }
 
-    pub(super) fn populate<Buf: SynthBuf>(&mut self, buf: &mut Buf) -> bool {
-        for i in 0..buf.len() {
-            // println!("sampling for: {:?}", self.trigger.sample);
-            self.trigger.sample += 1;
-            let (l, r) = self.generator.sample(self.trigger);
-            buf.set(i, (l, r))
-        }
-        self.generator.is_playing(self.trigger)
+    pub(super) fn populate<Buf: StereoBuf>(&mut self, buf: &mut Buf) -> bool {
+        self.generator.populate(self.trigger, self.sample..self.sample + (buf.len() as u64), buf);
+        self.sample += buf.len() as u64;
+        self.generator.is_playing(self.trigger, self.sample)
     }
 }

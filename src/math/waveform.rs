@@ -1,5 +1,7 @@
 use std::f32::consts::PI;
 
+use fastapprox::faster::sin as fast_sin;
+
 #[derive(Clone, Copy)]
 pub enum Waveform {
     Sine,
@@ -16,7 +18,7 @@ impl Waveform {
                 let cycle_width = 0.5 + pulse_width * 0.5;
                 let pos2 = pos / cycle_width;
                 let pos2 = pos2 - pos2.floor();
-                (pos2 * 2.0 * PI).sin()
+                fast_sin(pos2 * 2.0 * PI - PI)
             }
             Waveform::Square => if pos < (0.5 * pulse_width) { -1.0 } else { 1.0 },
             Waveform::Triangle => {

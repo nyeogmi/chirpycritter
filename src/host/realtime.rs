@@ -7,7 +7,7 @@ use std::{sync::{Arc, Mutex}, time::Instant};
 
 use cpal::{Stream, traits::{DeviceTrait, HostTrait, StreamTrait}};
 
-use super::{SynthConfig, Synthesizer, traits::{StereoBuf, SynthBuf}};
+use super::{SynthConfig, Synthesizer, traits::{FixedBuf, StereoBuf}};
 
 pub struct SynthEnvironment<S: Synthesizer> {
     first_sample_instant: Instant,
@@ -88,14 +88,14 @@ impl<S: Synthesizer> SynthEnvironment<S> {
 
 pub struct SynthState<S: Synthesizer> {
     // TODO: Reset buf state in any cases? (End of song, etc.)
-    buf: StereoBuf,
+    buf: FixedBuf,
     buf_ix: usize,
     synth: S,
 }
 
 impl<S: Synthesizer> SynthState<S> {
     pub(crate) fn new(synth_config: SynthConfig) -> SynthState<S> {
-        let buf = StereoBuf::new();
+        let buf = FixedBuf::new();
         let buf_ix = buf.len();
         Self {
             buf, buf_ix,

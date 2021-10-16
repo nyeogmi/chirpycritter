@@ -1,5 +1,7 @@
 use crate::*;
 
+use fastapprox::faster::pow as fast_pow;
+
 #[derive(Clone, Copy)]
 pub struct ADSR<T> {
     pub attack: T, // seconds
@@ -54,12 +56,12 @@ impl ADSR<u64> {
 // TODO: Don't do any f32 conversions. Use arrays for this instead
 // maps 0.0-1.0 to 0.0-1.0
 fn moog_attack(x: f32) -> f32 {
-    x.powf(0.33333333)
+    fast_pow(x, 0.33333333)
 }
 
 // maps 0.0-1.0 to 0.0-1.0
 fn moog_decay(x: f32) -> f32 {
-    x.powf(3.0)
+    fast_pow(x, 3.0)
 }
 
 fn percentage(x: u64, y: u64) -> f32 {

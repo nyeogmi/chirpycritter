@@ -9,9 +9,10 @@ pub struct Modulators<T> {
     pub lfo1: LFO<T>, pub lfo2: LFO<T>, pub lfo3: LFO<T>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct ModulatorSnapshot {
-    pub(super) spread_pitch_offset: f32,  // TODO: Envelope or something for this?
+    pub(super) true_frequency: f32,
+    pub(super) waveform_progress: f32,
     pub(super) echo: u64,
     pub(super) gain1: f32, pub(super) gain2: f32,
     pub(super) env1: f32, pub(super) env2: f32, pub(super) env3: f32,
@@ -35,11 +36,12 @@ impl Modulators<f32> {
 }
 
 impl Modulators<u64> {
-    pub(super) fn snap(&self, trigger: Trigger) -> ModulatorSnapshot {
-        let (echo, sample) = self.echoes.to_echo(trigger.sample);
+    pub(super) fn snap(&self, trigger: Trigger, sample: u64) -> ModulatorSnapshot {
+        let (echo, sample) = self.echoes.to_echo(sample);
 
         ModulatorSnapshot {
-            spread_pitch_offset: 0.0,
+            true_frequency: 0.0,  // must be populated later
+            waveform_progress: 0.0,  // ditto
             echo: echo,
             gain1: self.gain1.at(trigger.release_at, sample),
             gain2: self.gain2.at(trigger.release_at, sample),
@@ -82,7 +84,7 @@ impl Modulated {
         }
     }
 
-    pub(super) fn over(&self, snap: ModulatorSnapshot) -> f32 {
+    pub(super) fn over(&self, snap: &ModulatorSnapshot) -> f32 {
         let mut val = self.value * self.value_echo_dampen.powf(snap.echo as f32);
         val += snap.get_env(self.env, 0.0) * self.env_amplitude * self.env_echo_dampen.powf(snap.echo as f32);
         val += snap.get_lfo(self.lfo) * self.lfo_amplitude * snap.get_env(self.sidechain, 1.0) * self.lfo_echo_dampen.powf(snap.echo as f32);

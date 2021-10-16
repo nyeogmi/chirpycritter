@@ -45,11 +45,11 @@ impl Ensemble {
         }
     }
 
-    pub(super) fn populate<Buf: SynthBuf>(&mut self, buf: &mut Buf) {
+    pub(super) fn populate<Buf: StereoBuf>(&mut self, buf: &mut Buf) {
         let mut buf_i: usize = 0;
 
-        for i in 0..buf.len() { buf.set(i, (0.0, 0.0)); }
-        let mut spare_buf = StereoBuf::new();
+        for i in 0..buf.len() { buf.set(i, [0.0, 0.0]); }
+        let mut spare_buf = FixedBuf::new();
 
         loop {
             let samples_needed = buf.len() - buf_i;
@@ -68,9 +68,9 @@ impl Ensemble {
                     if !playing { *v = None; }
 
                     for i in 0..cut_buf.len() {
-                        let (old_l, old_r) = buf.get(buf_i + i as usize);
-                        let (new_l, new_r) = cut_buf.get(i);
-                        buf.set(buf_i + i as usize, (old_l + new_l, old_r + new_r));
+                        let [old_l, old_r] = buf.get(buf_i + i as usize);
+                        let [new_l, new_r] = cut_buf.get(i);
+                        buf.set(buf_i + i as usize, [old_l + new_l, old_r + new_r]);
                     }
                 }
             }

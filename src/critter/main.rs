@@ -25,7 +25,7 @@ impl Synthesizer for ChirpyCritter {
         }
     }
 
-    fn populate<S: SynthBuf>(&mut self, buf: &mut S) {
+    fn populate<S: StereoBuf>(&mut self, buf: &mut S) {
         self.sample += 1;
         self.playback.populate(buf);
     }

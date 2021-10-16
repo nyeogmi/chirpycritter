@@ -1,6 +1,9 @@
 use std::f32::consts::PI;
 
+use crate::*;
 use super::*;
+
+use fastapprox::faster::tanh as fast_tanh;
 
 #[derive(Clone)]
 pub(super) struct VCFImpl {
@@ -16,10 +19,10 @@ impl VCFImpl {
         }
     }
 
-    pub fn process(&mut self, input: f32, snap: ModulatorSnapshot) -> f32 {
+    pub fn process<Buf: MonoBuf>(&mut self, snap: &ModulatorSnapshot, channel: &mut Buf) {
         self.lp.set_cutoff(self.patch.cutoff.over(snap));
         self.lp.set_resonance(self.patch.resonance.over(snap));
-        self.lp.process(input)
+        self.lp.process(channel)
     }
 }
 
@@ -55,7 +58,7 @@ impl MoogLP {
             stage_tanh: [0.0; 3],
             delay: [0.0; 6],
 
-            thermal: 800.0 * 0.000025,
+            thermal: 800.0 * 0.000025,  // TODO: Does this matter? TODO2: Consider a faster moog filter
             tune: 0.0,
             acr: 0.0,
             res_quad: 0.0,
@@ -98,28 +101,31 @@ impl MoogLP {
         self.res_quad = (3.2 * resonance + 0.4) * self.acr;
     }
 
-    pub(super) fn process(&mut self, input: f32) -> f32 {
-        for _ in 0..2 {
-            let input = input - self.res_quad * self.delay[5];
+    pub(super) fn process<Buf: MonoBuf>(&mut self, buf: &mut Buf) {
+        for i in 0..buf.len() {
+            let input = buf.get(i);
+            for _ in 0..2 {
+                let input = input - self.res_quad * self.delay[5];
 
-            let new_delay = self.delay[0] + self.tune * ((input * self.thermal).tanh() - self.stage_tanh[0]);
-            self.delay[0] = new_delay;
-            self.stage[0] = new_delay;
+                let new_delay = self.delay[0] + self.tune * (fast_tanh(input * self.thermal) - self.stage_tanh[0]);
+                self.delay[0] = new_delay;
+                self.stage[0] = new_delay;
 
-            for k in 1..4 {
-                let input = self.stage[k - 1];
-                self.stage_tanh[k - 1] = (input * self.thermal).tanh();
-                self.stage[k] = 
-                    self.delay[k] + 
-                    self.tune * (
-                        self.stage_tanh[k - 1] -
-                        (if k != 3 { self.stage_tanh[k]} else { (self.delay[k] * self.thermal).tanh() })
-                    );
-                self.delay[k] = self.stage[k]
+                for k in 1..4 {
+                    let input = self.stage[k - 1];
+                    self.stage_tanh[k - 1] = fast_tanh(input * self.thermal);
+                    self.stage[k] = 
+                        self.delay[k] + 
+                        self.tune * (
+                            self.stage_tanh[k - 1] -
+                            (if k != 3 { self.stage_tanh[k]} else { fast_tanh(self.delay[k] * self.thermal) })
+                        );
+                    self.delay[k] = self.stage[k]
+                }
+                self.delay[5] = (self.stage[3] + self.delay[4]) * 0.5;
+                self.delay[4] = self.stage[3]
             }
-            self.delay[5] = (self.stage[3] + self.delay[4]) * 0.5;
-            self.delay[4] = self.stage[3]
+            buf.set(i, self.delay[5].max(-1.0).min(1.0))
         }
-        return self.delay[5].max(-1.0).min(1.0)
     }
 }
