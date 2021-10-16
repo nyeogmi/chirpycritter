@@ -9,8 +9,12 @@ fn main() {
     let song = convert_midi(&midi);
     stock.setup(|synth| synth.play(song.clone()));
 
+    /*
+    println!("start export");
     let mut wav = File::create("examples/ethics.wav").unwrap();
     wavexport(|synth: &mut ChirpyCritter| synth.play(song.clone()), &mut wav);
+    println!("finished export");
+    */
 
     while stock.is_playing() {
         thread::sleep(Duration::from_millis(1));

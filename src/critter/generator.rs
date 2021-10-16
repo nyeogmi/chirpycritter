@@ -1,3 +1,4 @@
+use crate::*;
 use super::*;
 
 #[derive(Clone, Copy)]
@@ -5,6 +6,7 @@ pub(crate) struct Generator {
     osc1: Generator1,
     osc2: Option<Generator1>,
     modulators: Modulators<u64>,
+    vcf: VCF,  // called VCF because "filter" is a loaded word in Rust!
 }
 
 #[derive(Clone, Copy)]
@@ -14,13 +16,14 @@ pub(crate) struct Generator1 {
 }
 
 impl Generator {
-    pub fn new_for(patch: Patch<u64>) -> Generator {
+    pub fn new_for(config: TimeConfig, patch: Patch<u64>) -> Generator {
         Generator {
             osc1: Generator1 { patch: patch.osc1, waveform_progress: 0.0 },
             osc2: patch.osc2.map(|p| { 
                 Generator1 { patch: p, waveform_progress: 0.0 }
             }),
             modulators: patch.modulators,
+            vcf: VCF::MoogLP(MoogLP::new(config.samples_per_second, 3000.0, 0.1)),
         }
     }
 
@@ -42,7 +45,9 @@ impl Generator {
         if let Some(osc2) = &mut self.osc2 {
             sum += osc2.sample(trigger, snap, snap.gain2);
         }
-        sum
+        let samp2 = self.vcf.process(sum);
+        // println!("vcf: {:?}", self.vcf);
+        samp2 
     }
 }
 

@@ -20,8 +20,8 @@ impl Voice {
             note_ix, 
 
             duration_left: duration, 
-            generator_l: Generator::new_for(patch.left(config)),
-            generator_r: Generator::new_for(patch.right(config)),
+            generator_l: Generator::new_for(config, patch.left(config)),
+            generator_r: Generator::new_for(config, patch.right(config)),
             spread: patch.spread,
 
             trigger: Trigger { 
