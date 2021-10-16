@@ -25,9 +25,11 @@ impl Synthesizer for ChirpyCritter {
         }
     }
 
-    fn next_sample(&mut self) -> (f32, f32) {
+    fn populate<S: SynthBuf>(&mut self, buf: &mut S) {
         self.sample += 1;
-        self.playback.next_sample()
+        for i in 0..buf.len() {
+            buf.set(i, self.playback.next_sample())
+        }
     }
 
     fn is_playing(&self, sample: u64) -> bool {

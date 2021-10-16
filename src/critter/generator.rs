@@ -1,5 +1,3 @@
-use cpal::Stream;
-
 use crate::*;
 use super::*;
 
@@ -98,7 +96,7 @@ impl StereoOscImpl {
                 let mut snap_l = snap;
                 let mut snap_r = snap;
 
-                snap_l.spread_pitch_offset = -spread.frequency;
+                snap_l.spread_pitch_offset -= spread.frequency;
                 snap_r.spread_pitch_offset += spread.frequency;
 
                 let pure_l = l.sample(trigger, snap_l, gain);

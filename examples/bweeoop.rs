@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use chirpycritter::{SynthConfig, SynthEnvironment, Synthesizer};
+use chirpycritter::{SynthBuf, SynthConfig, SynthEnvironment, Synthesizer};
 
 struct SineExample {
     config: SynthConfig,
@@ -12,11 +12,13 @@ impl Synthesizer for SineExample {
         SineExample { config, sample: 0 }
     }
 
-    fn next_sample(&mut self) -> (f32, f32) {
-        self.sample += 1;
-        let l = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
-        let r = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
-        (l, r)
+    fn populate<Buf: SynthBuf>(&mut self, buf: &mut Buf) {
+        for i in 0..buf.len() {
+            self.sample += 1;
+            let l = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
+            let r = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
+            buf.set(i, (l, r))
+        }
     }
 
     fn is_playing(&self, sample: u64) -> bool {

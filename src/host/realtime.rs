@@ -7,11 +7,11 @@ use std::{sync::{Arc, Mutex}, time::Instant};
 
 use cpal::{Stream, traits::{DeviceTrait, HostTrait, StreamTrait}};
 
-use super::{SynthConfig, Synthesizer};
+use super::{SynthConfig, Synthesizer, traits::{StereoBuf, SynthBuf}};
 
 pub struct SynthEnvironment<S: Synthesizer> {
     first_sample_instant: Instant,
-    synthesizer: Arc<Mutex<S>>,
+    synthesizer: Arc<Mutex<SynthState<S>>>,
     config: SynthConfig,
     #[allow(dead_code)]
     stream: Stream,  // just keep this so it doesn't get dealloc'ed
@@ -23,7 +23,7 @@ impl<S: Synthesizer> SynthEnvironment<S> {
         let estimated_nanos = self.first_sample_instant.elapsed().as_nanos();
         let estimated_sample = (estimated_nanos * self.config.sample_rate as u128) / 1_000_000_000u128;
         let synth = self.synthesizer.lock().unwrap();
-        synth.is_playing(estimated_sample as u64)
+        synth.synth.is_playing(estimated_sample as u64)
     }
 
     pub fn start() -> SynthEnvironment<S> {
@@ -43,7 +43,7 @@ impl<S: Synthesizer> SynthEnvironment<S> {
 
         let synth_config = SynthConfig { sample_rate };
 
-        let synth_ref = Arc::new(Mutex::new(S::new(synth_config)));
+        let synth_ref = Arc::new(Mutex::new(SynthState::new(synth_config)));
 
         let sr = synth_ref.clone();
         let stream = match (sample_format, channels) {
@@ -63,10 +63,10 @@ impl<S: Synthesizer> SynthEnvironment<S> {
 
     pub fn setup(&self, f: impl FnOnce(&mut S)) {
         let mut s = self.synthesizer.lock().unwrap();
-        f(&mut *s)
+        f(&mut s.synth)
     }
 
-    fn run_stereo<T>(synth_ref: Arc<Mutex<S>>, device: &cpal::Device, config: &cpal::StreamConfig) -> Stream
+    fn run_stereo<T>(synth_ref: Arc<Mutex<SynthState<S>>>, device: &cpal::Device, config: &cpal::StreamConfig) -> Stream
     where
         T: cpal::Sample,
     {
@@ -76,7 +76,7 @@ impl<S: Synthesizer> SynthEnvironment<S> {
             config,
             move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
                 let mut s = synth_ref.lock().unwrap(); // TODO: What the fuck is a poisonerror
-                write_data_stereo(data, &mut *s)
+                s.write_data_stereo(data)
             },
             err_fn,
         ).unwrap();
@@ -86,14 +86,58 @@ impl<S: Synthesizer> SynthEnvironment<S> {
 
 }
 
-fn write_data_stereo<S, T>(output: &mut [T], synth: &mut S)
-where
-    S: Synthesizer,
-    T: cpal::Sample,
-{
-    for frame in output.chunks_mut(2) {
-        let (l, r) = synth.next_sample();
-        frame[0] = cpal::Sample::from::<f32>(&l);
-        frame[1] = cpal::Sample::from::<f32>(&r);
+pub struct SynthState<S: Synthesizer> {
+    // TODO: Reset buf state in any cases? (End of song, etc.)
+    buf: StereoBuf,
+    buf_ix: usize,
+    synth: S,
+}
+
+impl<S: Synthesizer> SynthState<S> {
+    pub(crate) fn new(synth_config: SynthConfig) -> SynthState<S> {
+        let buf = StereoBuf::new();
+        let buf_ix = buf.len();
+        Self {
+            buf, buf_ix,
+            synth: S::new(synth_config)
+        }
     }
+
+    pub fn write_data_stereo<T>(&mut self, output: &mut [T])
+    where
+        T: cpal::Sample,
+    {
+        let mut output_i = 0;
+        let mut frames_needed = output.len();
+        loop {
+            if frames_needed <= 0 { break; }
+
+            if self.buf_ix >= self.buf.values.len() {
+                self.buf_ix = 0;
+                self.synth.populate(&mut self.buf)
+            }
+
+            let frames_available = self.buf.values.len() - self.buf_ix;
+
+            let frames_to_take = frames_available.min(frames_needed);
+            for i in &self.buf.values[self.buf_ix..][..frames_to_take] {
+                output[output_i] = cpal::Sample::from::<f32>(i);
+                output_i += 1;
+            }
+
+            self.buf_ix += frames_to_take;
+            frames_needed -= frames_to_take;
+        }
+
+        /* 
+        let chunk = [f32; 1024]
+        synth.populate(self.buf)
+        for frame in output.chunks_mut(2) {
+            let (l, r) = synth.next_sample();
+            frame[0] = cpal::Sample::from::<f32>(&l);
+            frame[1] = cpal::Sample::from::<f32>(&r);
+        }
+        */
+    }
+
 }
