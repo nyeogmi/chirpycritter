@@ -1,18 +1,18 @@
-use crate::*;
+use crate::{Envelope, Waveform};
 
 #[derive(Clone, Copy)]
-pub struct Patch<T> {
-    pub osc1: Patch1<T>,
-    pub osc2: Option<Patch1<T>>,
+pub struct SamplePatch {
+    pub osc1: Patch1,
+    pub osc2: Option<Patch1>,
     pub spread: Spread,
 }
 
 #[derive(Clone, Copy)]
-pub struct Patch1<T> {
-    pub gain: Envelope<T>,
-    pub frequency_offset: Envelope<T>,  // TODO: Make sure this is in semitones
+pub struct SamplePatch1 {
+    pub gain: Envelope,
+    pub frequency_offset: SampleEnvelope,  // TODO: Make sure this is in semitones
     pub waveform: Waveform,
-    pub pulse_width: Envelope<T>,
+    pub pulse_width: SampleEnvelope,
 }
 
 #[derive(Clone, Copy)]
@@ -21,8 +21,8 @@ pub struct Spread {
     pub amount: f32,  // runs from 0.0 to 1.0
 }
 
-impl Patch<f32> {
-    pub(crate) fn left(self, config: TimeConfig) -> Patch<u64> {
+impl Patch {
+    pub fn left(self) -> Patch {
         let mut osc1 = self.osc1;
         osc1.frequency_offset.base -= self.spread.frequency;
 
@@ -36,13 +36,13 @@ impl Patch<f32> {
         let spread = self.spread;
 
         Patch {
-            osc1: osc1.apply_time(config), 
-            osc2: osc2.map(|o2| o2.apply_time(config)), 
+            osc1, 
+            osc2, 
             spread
         }
     }
 
-    pub(crate) fn right(self, config: TimeConfig) -> Patch<u64> {
+    pub fn right(self) -> Patch {
         let mut osc1 = self.osc1;
         osc1.frequency_offset.base += self.spread.frequency;
 
@@ -56,20 +56,9 @@ impl Patch<f32> {
         let spread = self.spread;
 
         Patch {
-            osc1: osc1.apply_time(config), 
-            osc2: osc2.map(|o2| o2.apply_time(config)), 
+            osc1, 
+            osc2, 
             spread
-        }
-    }
-}
-
-impl Patch1<f32> {
-    fn apply_time(&self, config: TimeConfig) -> Patch1<u64> {
-        Patch1 { 
-            gain: self.gain.apply_time(config),
-            frequency_offset: self.frequency_offset.apply_time(config),
-            waveform: self.waveform,
-            pulse_width: self.pulse_width.apply_time(config),
         }
     }
 }

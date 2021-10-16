@@ -3,7 +3,10 @@ mod interpolation;
 mod time;
 mod waveform;
 
-pub use envelope::{ADSRf, Echoes, Envelope, LFOf};
+pub use envelope::{
+    ADSR, Echoes, Envelope, LFO
+};
+
 pub(crate) use interpolation::lerp;
-pub use time::Time;
+pub(crate) use time::TimeConfig;
 pub use waveform::Waveform;

@@ -1,11 +1,11 @@
 use crate::*;
 
-pub fn sample_patch() -> Patch {
+pub fn sample_patch() -> Patch<f32> {
     Patch { 
         osc1: Patch1 {
             gain: Envelope { 
                 base: 0.0, 
-                adsr: Some(ADSRf { low: 0.0, high: 0.3, attack: 0.0, decay: 0.8, sustain: 0.4, release: 0.4 }) ,
+                adsr: Some(ADSR { low: 0.0, high: 0.3, attack: 0.0, decay: 0.8, sustain: 0.4, release: 0.4 }) ,
                 lfo: None,
                 /*
                 echoes: Some(Echoes {
@@ -23,11 +23,10 @@ pub fn sample_patch() -> Patch {
                 lfo: None,
                 echoes: None,
             }, 
-            frequency: 0,
             waveform: Waveform::Square,
             pulse_width: Envelope { 
                 base: 0.0, 
-                adsr: Some(ADSRf { low: 0.0, high: 0.3, attack: 0.3, decay: 0.2, sustain: 0.05, release: 0.1}),
+                adsr: Some(ADSR { low: 0.0, high: 0.3, attack: 0.3, decay: 0.2, sustain: 0.05, release: 0.1}),
                 lfo: None,
                 echoes: None,
             },

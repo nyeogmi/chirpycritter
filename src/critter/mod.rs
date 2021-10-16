@@ -1,14 +1,14 @@
 mod ensemble;
 mod generator;
+mod main;
 mod patch;
-mod playback;
-mod shared;
 mod voice;
+mod trigger;
 
-pub use ensemble::Ensemble;
-pub use generator::Generator;
+pub use main::ChirpyCritter;
 pub use patch::{Patch, Patch1, Spread};
 
-pub(self) use playback::Playback;
-pub(self) use shared::SongConfig;
+pub(self) use ensemble::Ensemble;
+pub(self) use generator::Generator;
+pub(self) use trigger::Trigger;
 pub(self) use voice::Voice;
