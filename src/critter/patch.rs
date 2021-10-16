@@ -4,6 +4,7 @@ use crate::*;
 pub struct Patch<T> {
     pub osc1: Patch1,
     pub osc2: Option<Patch1>,
+    pub vcf1: VCF,
     pub modulators: Modulators<T>,
     pub spread: Spread,
 }
@@ -14,6 +15,12 @@ pub struct Patch1 {
     pub frequency_offset: Modulated,  // TODO: Make sure this is in semitones
     pub waveform: Waveform,
     pub pulse_width: Modulated,
+}
+
+#[derive(Clone, Copy)]
+pub struct VCF {
+    pub cutoff: Modulated,  // TODO: Replace with an 0-1 knob
+    pub resonance: Modulated,
 }
 
 #[derive(Clone, Copy)]
@@ -47,6 +54,7 @@ impl Patch<f32> {
         Patch {
             osc1: osc1,
             osc2: osc2,
+            vcf1: self.vcf1,
             modulators: self.modulators.apply_time(config),
             spread,
         }

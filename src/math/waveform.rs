@@ -4,6 +4,7 @@ use std::f32::consts::PI;
 pub enum Waveform {
     Sine,
     Square,
+    Triangle,
     Saw,
 }
 
@@ -18,6 +19,12 @@ impl Waveform {
                 (pos2 * 2.0 * PI).sin()
             }
             Waveform::Square => if pos < (0.5 * pulse_width) { -1.0 } else { 1.0 },
+            Waveform::Triangle => {
+                let cycle_width = 0.5 + pulse_width * 0.5;
+                let pos2 = pos / cycle_width;
+                let pos2 = pos2 - pos2.floor();
+                if pos2 < 0.5 { pos2 * 4.0 - 1.0 } else { (pos2 - 0.5) * -4.0 + 1.0}
+            }
             Waveform::Saw => {
                 let cycle_width = 0.5 + pulse_width * 0.5;
                 let pos2 = pos / cycle_width;

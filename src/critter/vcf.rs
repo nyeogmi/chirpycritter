@@ -1,24 +1,33 @@
 use std::f32::consts::PI;
 
-#[derive(Clone, Copy, Debug)]
-pub(super) enum VCF {
-    None,
-    MoogLP(MoogLP),
+use crate::*;
+use super::*;
+
+#[derive(Clone, Copy)]
+pub(super) struct VCFImpl {
+    patch: VCF,
+    lp: MoogLP,
 }
 
-impl VCF {
-    pub fn process(&mut self, input: f32) -> f32 {
-        match self {
-            VCF::None => input,
-            VCF::MoogLP(m) => m.process(input),
+impl VCFImpl {
+    pub fn new(sample_rate: u64, patch: VCF) -> VCFImpl {
+        VCFImpl {
+            patch,
+            lp: MoogLP::new(sample_rate, 1000.0, 0.0),
         }
+    }
+
+    pub fn process(&mut self, input: f32, snap: ModulatorSnapshot) -> f32 {
+        self.lp.set_cutoff(self.patch.cutoff.over(snap));
+        self.lp.set_resonance(self.patch.resonance.over(snap));
+        self.lp.process(input)
     }
 }
 
 // Huovilainen's moog model
 // https://github.com/ddiakopoulos/MoogLadders/blob/master/src/HuovilainenModel.h
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub(super) struct MoogLP {
     sample_rate: u64,
     cutoff: f32,
@@ -47,7 +56,7 @@ impl MoogLP {
             stage_tanh: [0.0; 3],
             delay: [0.0; 6],
 
-            thermal: 0.000025,
+            thermal: 800.0 * 0.000025,
             tune: 0.0,
             acr: 0.0,
             res_quad: 0.0,
@@ -77,10 +86,14 @@ impl MoogLP {
     }
 
     pub(super) fn set_resonance(&mut self, resonance: f32) {
+        let resonance = resonance.min(1.0).max(0.0);
         if resonance == self.resonance { return; }
 
         self.resonance = resonance;
-        self.res_quad = 4.0 * resonance * self.acr;
+
+        // was originally 4.0, adjust to a cap of .90
+        // self.res_quad = 4.0 * resonance * self.acr;
+        self.res_quad = (3.2 * resonance + 0.4) * self.acr;
     }
 
     pub(super) fn process(&mut self, input: f32) -> f32 {
@@ -105,6 +118,6 @@ impl MoogLP {
             self.delay[5] = (self.stage[3] + self.delay[4]) * 0.5;
             self.delay[4] = self.stage[3]
         }
-        return self.delay[5]
+        return self.delay[5].max(-1.0).min(1.0)
     }
 }

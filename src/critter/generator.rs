@@ -6,7 +6,7 @@ pub(crate) struct Generator {
     osc1: Generator1,
     osc2: Option<Generator1>,
     modulators: Modulators<u64>,
-    vcf: VCF,  // called VCF because "filter" is a loaded word in Rust!
+    vcf1: VCFImpl,  
 }
 
 #[derive(Clone, Copy)]
@@ -23,7 +23,7 @@ impl Generator {
                 Generator1 { patch: p, waveform_progress: 0.0 }
             }),
             modulators: patch.modulators,
-            vcf: VCF::MoogLP(MoogLP::new(config.samples_per_second, 3000.0, 0.1)),
+            vcf1: VCFImpl::new(config.samples_per_second, patch.vcf1),
         }
     }
 
@@ -45,7 +45,8 @@ impl Generator {
         if let Some(osc2) = &mut self.osc2 {
             sum += osc2.sample(trigger, snap, snap.gain2);
         }
-        let samp2 = self.vcf.process(sum);
+
+        let samp2 = self.vcf1.process(sum, snap);
         // println!("vcf: {:?}", self.vcf);
         samp2 
     }
