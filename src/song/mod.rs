@@ -10,7 +10,7 @@ pub struct Song {
 #[derive(Clone, Copy, Debug)]
 pub enum Packet {
     Play {
-        program: u16,
+        channel: u16,
         frequency: u16,
         duration: u16,
     },  // hertz, duration

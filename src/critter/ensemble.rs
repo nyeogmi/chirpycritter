@@ -98,8 +98,8 @@ impl Ensemble {
 
         while !self.song_over() && self.ticks_to_wait == 0 {
             match self.song.data[self.cursor] {
-                crate::Packet::Play { program, frequency, duration } => {
-                    self.add_voice(program, frequency, duration)
+                crate::Packet::Play { channel, frequency, duration } => {
+                    self.add_voice(channel, frequency, duration)
                 }
                 crate::Packet::Wait(ticks) => {
                     self.ticks_to_wait += ticks as usize
@@ -113,11 +113,11 @@ impl Ensemble {
         !(0..self.song.data.len()).contains(&self.cursor)
     }
 
-    fn add_voice(&mut self, program: u16, frequency: u16, duration: u16) {
+    fn add_voice(&mut self, channel: u16, frequency: u16, duration: u16) {
         let note_ix = self.song_next_note;
         self.song_next_note += 1;
 
-        let patch = sample_patch(); // TODO: Use program
+        let patch = if channel == 0 { sample_patch_1() } else { sample_patch_2() };
 
         let voice_to_use = Some(Voice::new(note_ix, self.config, patch, duration, frequency));
         for v in self.playing.iter_mut() {

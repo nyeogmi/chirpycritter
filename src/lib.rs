@@ -7,7 +7,7 @@ mod host;
 mod math;
 mod song;
 
-pub(self) use content::sample_patch;
+pub(self) use content::{sample_patch_1, sample_patch_2};
 pub use critter::*;
 pub use host::*;
 pub use math::*;

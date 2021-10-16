@@ -56,7 +56,8 @@ pub fn convert_midi(bytes: &[u8]) -> Song {
                             if let Some(note_on) = notes_on.remove(&key) {
                                 // TODO: as_int -- actually convert to hertz!!!
                                 let packet = Packet::Play {
-                                    program: channel_program[note_on.channel.as_int() as usize].as_int() as u16,
+                                    channel: note_on.channel.as_int() as u16,
+                                    // program: channel_program[note_on.channel.as_int() as usize].as_int() as u16,
                                     frequency: to_hertz(key), 
                                     duration: (tick - note_on.start) as u16,
                                 };
@@ -93,7 +94,11 @@ fn songify(ticks_per_beat: u32, microseconds_per_beat: u32, all_notes: BTreeMap<
 
     let mut last_tick: u64 = 0;
     for (tick, packets) in all_notes {
-        if tick > last_tick { song_packets.push(Packet::Wait((tick - last_tick) as u16)) }
+        if tick > last_tick { 
+            if song_packets.len() > 0 {
+                song_packets.push(Packet::Wait((tick - last_tick) as u16))
+            }
+        }
         last_tick = tick;
 
         for packet in packets {

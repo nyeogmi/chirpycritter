@@ -2,9 +2,6 @@ use crate::*;
 
 #[derive(Clone, Copy)]
 pub struct ADSR<T> {
-    pub low: f32,
-    pub high: f32,
-
     pub attack: T, // seconds
     pub decay: T, // seconds
     pub sustain: f32, // percent
@@ -14,32 +11,29 @@ pub struct ADSR<T> {
 impl ADSR<f32> {
     pub(crate) fn apply_time(&self, config: TimeConfig) -> ADSR<u64> {
         ADSR { 
-            low: self.low,
-            high: self.high,
-
             attack: (self.attack * config.samples_per_second as f32).floor() as u64,
             decay: (self.decay * config.samples_per_second as f32).floor() as u64,
             sustain: self.sustain,
             release: (self.release * config.samples_per_second as f32).floor() as u64,
         }
     }
+
+    pub(crate) fn maxed() -> ADSR<f32> {
+        ADSR { attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0 }
+    }
 }
 
 impl ADSR<u64> {
-    pub(super) fn at(&self, dampen: f32, released_at: Option<u64>, t: u64) -> f32 {
+    pub(crate) fn at(&self, released_at: Option<u64>, t: u64) -> f32 {
         if let Some(released_at) = released_at {
             if t > released_at {
                 let prerelease = self.atperc_prerelease(released_at);
                 let release_perc = percentage(t - released_at, self.release);
-                let base = lerp(moog_decay(1.0 - release_perc), 0.0, prerelease);
-                let dampen_base = lerp(base, 0.0, dampen);
-                return lerp(dampen_base, self.low, self.high);
+                return lerp(moog_decay(1.0 - release_perc), 0.0, prerelease)
             }
         }  
 
-        let base = self.atperc_prerelease(t);
-        let dampen_base = lerp(base, 0.0, dampen);
-        return lerp(dampen_base, self.low, self.high);
+        self.atperc_prerelease(t)
     }
 
     fn atperc_prerelease(&self, t: u64) -> f32 {
@@ -52,6 +46,14 @@ impl ADSR<u64> {
             return lerp(moog_decay(1.0 - decay_perc), self.sustain, 1.0);
         }
         return self.sustain;
+    }
+
+    pub(crate) fn is_playing(&self, released_at: Option<u64>, sample: u64) -> bool {
+        if let Some(ra) = released_at { 
+            sample < ra + self.release
+        } else {
+            false
+        }
     }
 }
 

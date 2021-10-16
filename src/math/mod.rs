@@ -4,7 +4,7 @@ mod time;
 mod waveform;
 
 pub use envelope::{
-    ADSR, Echoes, Envelope, LFO
+    ADSR, Echoes, LFO
 };
 
 pub(crate) use interpolation::lerp;
