@@ -7,9 +7,7 @@ pub(super) struct Voice {
 
     // TODO: Provide a constructor to populate these
     pub duration_left: u16,
-    pub generator_l: Generator,  
-    pub generator_r: Generator,  
-    pub spread: Spread,
+    pub generator: Generator,  
 
     pub trigger: Trigger,
 }
@@ -20,9 +18,7 @@ impl Voice {
             note_ix, 
 
             duration_left: duration, 
-            generator_l: Generator::new_for(config, patch.left(config)),
-            generator_r: Generator::new_for(config, patch.right(config)),
-            spread: patch.spread,
+            generator: Generator::new_for(config, patch.apply_time(config)),
 
             trigger: Trigger { 
                 config,
@@ -35,17 +31,7 @@ impl Voice {
 
     pub(super) fn render(&mut self) -> (f32, f32) {
         self.trigger.sample += 1;
-
-        let pure_l = self.generator_l.sample(self.trigger);
-        let pure_r = self.generator_r.sample(self.trigger);
-
-        // Move closer
-        // TODO: Use a real panning function for this
-        let (l, r) = (
-            lerp(lerp(self.spread.amount, 0.5, 0.0), pure_l, pure_r), 
-            lerp(lerp(self.spread.amount, 0.5, 0.0), pure_r, pure_l)
-        );
-        (l, r)
+        self.generator.sample(self.trigger)
     }
 
     pub(super) fn degrade(v: &mut Option<Voice>) {
@@ -56,7 +42,7 @@ impl Voice {
             }
             else if v2.duration_left == 0 {
                 // TODO: Only look at generator l? our spread feature can't make these diverge
-                if !(v2.generator_l.is_playing(v2.trigger) || v2.generator_r.is_playing(v2.trigger)) {
+                if !(v2.generator.is_playing(v2.trigger)) {
                     *v = None
                 }
             }

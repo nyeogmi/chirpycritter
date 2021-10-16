@@ -6,7 +6,6 @@ pub struct Patch<T> {
     pub osc2: Option<Osc>,
     pub vcf1: VCF,
     pub modulators: Modulators<T>,
-    pub spread: Spread,
 }
 
 #[derive(Clone, Copy)]
@@ -15,6 +14,7 @@ pub struct Osc {
     pub frequency_offset: Modulated,  // TODO: Make sure this is in semitones
     pub waveform: Waveform,
     pub pulse_width: Modulated,
+    pub spread: Spread,
 }
 
 #[derive(Clone, Copy)]
@@ -30,33 +30,18 @@ pub struct Spread {
 }
 
 impl Patch<f32> {
-    pub(crate) fn left(self, config: TimeConfig) -> Patch<u64> {
-        self.reexpose(config, -self.spread.frequency)
-    }
-
-    pub(crate) fn right(self, config: TimeConfig) -> Patch<u64> {
-        self.reexpose(config, self.spread.frequency)
-    }
-
-    pub(crate) fn reexpose(self, config: TimeConfig, freq: f32) -> Patch<u64> {
-        let mut osc1 = self.osc1;
-        osc1.frequency_offset.value += freq;
-
-        let osc2 = if let Some(mut o2) = self.osc2 {
-            o2.frequency_offset.value += freq;
-            Some(o2)
-        } else {
-            None
-        };
-
-        let spread = self.spread;
-
+    pub(crate) fn apply_time(self, config: TimeConfig) -> Patch<u64> {
         Patch {
-            osc1: osc1,
-            osc2: osc2,
+            osc1: self.osc1,
+            osc2: self.osc2,
             vcf1: self.vcf1,
             modulators: self.modulators.apply_time(config),
-            spread,
         }
+    }
+}
+
+impl Spread {
+    pub(crate) fn needs_stereo(&self) -> bool {
+        return self.amount > 0.0 && self.frequency > 0.0
     }
 }

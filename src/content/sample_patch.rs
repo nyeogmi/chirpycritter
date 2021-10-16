@@ -93,6 +93,7 @@ pub fn sample_patch_1() -> Patch<f32> {
             },
             waveform: Waveform::Square,
             pulse_width: Modulated::just(0.0),
+            spread: Spread { frequency: 0.2, amount: 0.1 },
         }, 
         osc2: Some(Osc {
             mul_gain: Modulated { 
@@ -102,6 +103,7 @@ pub fn sample_patch_1() -> Patch<f32> {
             frequency_offset: Modulated::just(0.0), // -12.0),
             waveform: Waveform::Square,
             pulse_width: Modulated::just(0.0),
+            spread: Spread { frequency: 0.2, amount: 0.1 },
         }), 
         vcf1: VCF {
             cutoff: Modulated { 
@@ -110,7 +112,6 @@ pub fn sample_patch_1() -> Patch<f32> {
             },
             resonance: Modulated::just(0.7),
         },
-        spread: Spread { frequency: 0.2, amount: 0.1 },
         modulators: Modulators {
             echoes: Echoes { n_times: 4, sync: true, period: 0.25 },
             gain1: ADSR { attack: 0.0, decay: 0.5, sustain: 0.2, release: 0.2 },
@@ -140,13 +141,13 @@ pub fn sample_patch_2() -> Patch<f32> {
             },
             waveform: Waveform::Sine,
             pulse_width: Modulated::just(0.8),
+            spread: Spread { frequency: 0.2, amount: 0.1 },
         }, 
         osc2: None,
         vcf1: VCF {
             cutoff: Modulated { ..Modulated::just(1.0) },
             resonance: Modulated::just(0.0),
         },
-        spread: Spread { frequency: 0.2, amount: 0.1 },
         modulators: Modulators {
             echoes: Echoes { n_times: 16, sync: true, period: 0.25 },
             gain1: ADSR { attack: 0.3, decay: 0.0, sustain: 0.1, release: 0.2 },

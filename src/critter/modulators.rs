@@ -11,6 +11,7 @@ pub struct Modulators<T> {
 
 #[derive(Clone, Copy)]
 pub(super) struct ModulatorSnapshot {
+    pub(super) spread_pitch_offset: f32,  // TODO: Envelope or something for this?
     pub(super) echo: u64,
     pub(super) gain1: f32, pub(super) gain2: f32,
     pub(super) env1: f32, pub(super) env2: f32, pub(super) env3: f32,
@@ -38,6 +39,7 @@ impl Modulators<u64> {
         let (echo, sample) = self.echoes.to_echo(trigger.sample);
 
         ModulatorSnapshot {
+            spread_pitch_offset: 0.0,
             echo: echo,
             gain1: self.gain1.at(trigger.released_at, sample),
             gain2: self.gain2.at(trigger.released_at, sample),
