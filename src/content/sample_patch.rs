@@ -79,7 +79,7 @@ pub fn sample_patch() -> Patch<f32> {
 */
 pub fn sample_patch_1() -> Patch<f32> {
     Patch { 
-        osc1: Patch1 {
+        osc1: Osc {
             mul_gain: Modulated { 
                 value_echo_dampen: 0.3,
                 ..Modulated::just(0.1)
@@ -94,7 +94,7 @@ pub fn sample_patch_1() -> Patch<f32> {
             waveform: Waveform::Square,
             pulse_width: Modulated::just(0.0),
         }, 
-        osc2: Some(Patch1 {
+        osc2: Some(Osc {
             mul_gain: Modulated { 
                 value_echo_dampen: 0.3,
                 ..Modulated::just(0.4)
@@ -105,8 +105,8 @@ pub fn sample_patch_1() -> Patch<f32> {
         }), 
         vcf1: VCF {
             cutoff: Modulated { 
-                env: ModEnvelope::Env2, env_amplitude: 13000.0,
-                ..Modulated::just(3000.0)
+                env: ModEnvelope::Env2, env_amplitude: 0.4,
+                ..Modulated::just(0.4)
             },
             resonance: Modulated::just(0.7),
         },
@@ -127,7 +127,7 @@ pub fn sample_patch_1() -> Patch<f32> {
 
 pub fn sample_patch_2() -> Patch<f32> {
     Patch { 
-        osc1: Patch1 {
+        osc1: Osc {
             mul_gain: Modulated { 
                 value_echo_dampen: 0.25,
                 ..Modulated::just(1.0)
@@ -143,7 +143,7 @@ pub fn sample_patch_2() -> Patch<f32> {
         }, 
         osc2: None,
         vcf1: VCF {
-            cutoff: Modulated { ..Modulated::just(22000.0) },
+            cutoff: Modulated { ..Modulated::just(1.0) },
             resonance: Modulated::just(0.0),
         },
         spread: Spread { frequency: 0.2, amount: 0.1 },

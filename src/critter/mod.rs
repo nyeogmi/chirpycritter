@@ -9,11 +9,11 @@ mod vcf;
 
 pub use main::ChirpyCritter;
 pub use modulators::{Modulators, Modulated, ModEnvelope, ModLfo};
-pub use patch::{Patch, Patch1, Spread, VCF};
+pub use patch::{Patch, Osc, Spread, VCF};
 
 pub(self) use ensemble::Ensemble;
 pub(self) use generator::Generator;
 pub(self) use modulators::ModulatorSnapshot;
 pub(self) use trigger::Trigger;
 pub(self) use voice::Voice;
-pub(self) use vcf::{MoogLP, VCFImpl};
+pub(self) use vcf::VCFImpl;

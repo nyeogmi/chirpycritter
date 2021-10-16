@@ -1,6 +1,5 @@
 use std::f32::consts::PI;
 
-use crate::*;
 use super::*;
 
 #[derive(Clone, Copy)]
@@ -72,7 +71,10 @@ impl MoogLP {
 
         self.cutoff = cutoff;
 
-        let fc = cutoff / (self.sample_rate as f32);
+        // basically, 0 should be something really low and 1 should be 24000 hz
+        let cutoff_freq = 47.0 * (512.0_f32).powf(cutoff);
+
+        let fc = cutoff_freq / (self.sample_rate as f32);
         let f = fc * 0.5;
         let fc2 = fc * fc;
         let fc3 = fc * fc * fc;

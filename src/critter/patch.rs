@@ -2,15 +2,15 @@ use crate::*;
 
 #[derive(Clone, Copy)]
 pub struct Patch<T> {
-    pub osc1: Patch1,
-    pub osc2: Option<Patch1>,
+    pub osc1: Osc,
+    pub osc2: Option<Osc>,
     pub vcf1: VCF,
     pub modulators: Modulators<T>,
     pub spread: Spread,
 }
 
 #[derive(Clone, Copy)]
-pub struct Patch1 {
+pub struct Osc {
     pub mul_gain: Modulated,
     pub frequency_offset: Modulated,  // TODO: Make sure this is in semitones
     pub waveform: Waveform,
