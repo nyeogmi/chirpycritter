@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Song {
     pub ticks_per_second: u64,
     pub ticks_per_beat: u64,

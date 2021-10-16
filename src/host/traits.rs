@@ -6,5 +6,5 @@ pub trait Synthesizer: 'static+Send {
 
 #[derive(Clone, Copy)]
 pub struct SynthConfig {
-    pub sample_rate: u64
+    pub sample_rate: u64,
 }

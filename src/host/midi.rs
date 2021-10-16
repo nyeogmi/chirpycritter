@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::{BTreeMap, btree_map::Entry}};
 
 use midly::num::{u4, u7};
 
-use crate::{Packet, Song};
+use crate::song::*;
 
 pub fn convert_midi(bytes: &[u8]) -> Song {
     let smf = midly::Smf::parse(bytes).unwrap();

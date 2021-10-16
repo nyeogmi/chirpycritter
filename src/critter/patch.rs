@@ -1,4 +1,4 @@
-use crate::{Waveform, envelope::Envelope};
+use crate::{Envelope, Waveform};
 
 #[derive(Clone, Copy)]
 pub struct Patch {

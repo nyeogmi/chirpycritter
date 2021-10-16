@@ -7,7 +7,7 @@ use std::{sync::{Arc, Mutex}, time::Instant};
 
 use cpal::{Stream, traits::{DeviceTrait, HostTrait, StreamTrait}};
 
-use crate::{SynthConfig, Synthesizer};
+use super::{SynthConfig, Synthesizer};
 
 pub struct SynthEnvironment<S: Synthesizer> {
     first_sample_instant: Instant,
