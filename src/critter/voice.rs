@@ -3,20 +3,34 @@ use crate::*;
 use super::SongConfig;
 
 #[derive(Clone, Copy)]
-pub struct Voice {
+pub(super) struct Voice {
     pub(super) note_ix: u64,
 
     // TODO: Provide a constructor to populate these
-    pub(super) duration_left: u16,
-    pub(super) generator_l: Generator,  
-    pub(super) generator_r: Generator,  
-    pub(super) spread: Spread,
+    pub duration_left: u16,
+    pub generator_l: Generator,  
+    pub generator_r: Generator,  
+    pub spread: Spread,
 
-    pub(super) sample: u64,
-    pub(super) released_at: Option<u64>,
+    pub sample: u64,
+    pub released_at: Option<u64>,
 }
 
 impl Voice {
+    pub(crate) fn new(note_ix: u64, patch: Patch, duration: u16, frequency: u16) -> Voice {
+        Voice { 
+            note_ix, 
+
+            duration_left: duration, 
+            generator_l: Generator::new_for(patch.left(frequency)),
+            generator_r: Generator::new_for(patch.right(frequency)),
+            spread: patch.spread,
+
+            sample: 0 ,
+            released_at: None,
+        }
+    }
+
     pub(super) fn render(&mut self, config: SongConfig) -> (f32, f32) {
         self.sample += 1;
 
@@ -70,4 +84,5 @@ impl Voice {
             }
         }
     }
+
 }

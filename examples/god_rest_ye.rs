@@ -1,11 +1,12 @@
 use std::{thread, time::Duration};
 
-use chirpycritter::{Stock, SynthEnvironment, midi};
+use chirpycritter::{convert_midi, Ensemble, SynthEnvironment};
+
 fn main() {
-    let stock = SynthEnvironment::<Stock>::start();
+    let stock = SynthEnvironment::<Ensemble>::start();
 
     let god_rest_ye = std::fs::read("examples/god_rest_ye.mid").unwrap();
-    let song = midi::convert_midi(&god_rest_ye);
+    let song = convert_midi(&god_rest_ye);
     stock.setup(|synth| synth.play(song));
 
     while stock.is_playing() {
