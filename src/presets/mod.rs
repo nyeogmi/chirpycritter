@@ -1,8 +1,4 @@
-mod sample_patch;
-
 use crate::*;
-
-// pub use sample_patch::{sample_patch_1};
 
 pub fn load() -> Bank {
     let mut bank = Bank::new();
@@ -11,6 +7,7 @@ pub fn load() -> Bank {
 }
 
 pub fn add(bank: &mut Bank) {
+    // NOTE: These are placeholders
     bank.add(Patch {
         name: INIT.to_string(),
         author: "Nyeogmi".to_string(),
