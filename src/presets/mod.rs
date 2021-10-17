@@ -36,13 +36,13 @@ pub fn add(bank: &mut Bank) {
             });
 
             p.modulators.gain1.decay = 0.2;
-            p.modulators.gain1.sustain = 0.2;
+            p.modulators.gain1.sustain = 0.8;
             p.modulators.gain2.attack = 0.1;
-            p.modulators.gain2.decay = 0.1;
+            p.modulators.gain2.decay = 0.7;
             p.modulators.gain2.sustain = 0.2;
 
             p.modulators.lfo1.sync = true;
-            p.modulators.lfo1.period = 0.25;
+            p.modulators.lfo1.period = 1.0;
 
             p
         }
