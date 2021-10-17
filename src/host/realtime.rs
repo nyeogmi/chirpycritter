@@ -7,7 +7,7 @@ use std::{sync::{Arc, Mutex}, time::Instant};
 
 use cpal::{Stream, traits::{DeviceTrait, HostTrait, StreamTrait}};
 
-use super::{SynthConfig, Synthesizer, traits::{FixedBuf, StereoBuf}};
+use super::*;
 
 pub struct SynthEnvironment<S: Synthesizer> {
     first_sample_instant: Instant,
@@ -108,36 +108,24 @@ impl<S: Synthesizer> SynthState<S> {
         T: cpal::Sample,
     {
         let mut output_i = 0;
-        let mut frames_needed = output.len();
         loop {
+            let frames_needed = output.len() - output_i;
             if frames_needed <= 0 { break; }
 
-            if self.buf_ix >= self.buf.values.len() {
+            if self.buf_ix >= self.buf.n_raw_samples() {
                 self.buf_ix = 0;
                 self.synth.populate(&mut self.buf)
             }
 
-            let frames_available = self.buf.values.len() - self.buf_ix;
+            let frames_available = self.buf.n_raw_samples() - self.buf_ix;
 
             let frames_to_take = frames_available.min(frames_needed);
-            for i in &self.buf.values[self.buf_ix..][..frames_to_take] {
-                output[output_i] = cpal::Sample::from::<f32>(i);
-                output_i += 1;
+            for frame in 0..frames_to_take {
+                let samp = self.buf.raw_sample(self.buf_ix + frame);
+                output[output_i + frame] = cpal::Sample::from::<f32>(&samp);
             }
-
+            output_i += frames_to_take;
             self.buf_ix += frames_to_take;
-            frames_needed -= frames_to_take;
         }
-
-        /* 
-        let chunk = [f32; 1024]
-        synth.populate(self.buf)
-        for frame in output.chunks_mut(2) {
-            let (l, r) = synth.next_sample();
-            frame[0] = cpal::Sample::from::<f32>(&l);
-            frame[1] = cpal::Sample::from::<f32>(&r);
-        }
-        */
     }
-
 }

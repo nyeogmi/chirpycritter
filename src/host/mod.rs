@@ -1,9 +1,11 @@
+mod bufs;
 mod midi;
 mod realtime;
 mod traits;
 mod wavexport;
 
+pub use bufs::*;
 pub use midi::convert_midi;
 pub use realtime::{SynthEnvironment};  // TODO: Call it "Player"
-pub use traits::{BorrowedBuf, BorrowedChannel, Synthesizer, SynthConfig, MonoBuf, StereoBuf, FixedBuf};
+pub use traits::{Synthesizer, SynthConfig};
 pub use wavexport::wavexport;

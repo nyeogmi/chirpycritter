@@ -45,7 +45,7 @@ impl Ensemble {
         }
     }
 
-    pub(super) fn populate<Buf: StereoBuf>(&mut self, buf: &mut Buf) {
+    pub(super) fn populate(&mut self, buf: &mut FixedBuf) {
         let mut buf_i: usize = 0;
 
         for i in 0..buf.len() { buf.set(i, [0.0, 0.0]); }
@@ -60,18 +60,14 @@ impl Ensemble {
             let samples_available = (self.song_next_event_at - self.song_sample) as usize;
             let samples_to_take = samples_available.min(samples_needed);
 
-            let mut cut_buf = spare_buf.up_to(samples_to_take);
+            let mut cut_buf = spare_buf.range(buf_i..buf_i + samples_to_take);
 
             for v in self.playing.iter_mut() {
                 if let Some(v2) = v {
                     let playing = v2.populate(&mut cut_buf);
                     if !playing { *v = None; }
 
-                    for i in 0..cut_buf.len() {
-                        let [old_l, old_r] = buf.get(buf_i + i as usize);
-                        let [new_l, new_r] = cut_buf.get(i);
-                        buf.set(buf_i + i as usize, [old_l + new_l, old_r + new_r]);
-                    }
+                    buf.add_from(&cut_buf);
                 }
             }
 

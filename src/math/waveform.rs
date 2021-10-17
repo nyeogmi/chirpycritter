@@ -10,6 +10,7 @@ pub enum Waveform {
     Saw,
 }
 
+// TODO: Nearly all of this code can probably be done way faster
 impl Waveform {
     pub fn at(&self, pulse_width: f32, pos: f32) -> f32 {
         let pulse_width = 1.0 - pulse_width;  // it's more natural to have this go up from 0.0 to 1.0, where 1.0 is most intense

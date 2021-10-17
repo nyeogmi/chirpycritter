@@ -54,6 +54,7 @@ impl Generator {
 
     pub(crate) fn populate<Buf: StereoBuf>(&mut self, trigger: Trigger, samples: Range<u64>, buf: &mut Buf) {
         // TODO: Take this more than once
+        assert!(samples.end - samples.start == buf.len() as u64);
         let mut snap = self.modulators.snap(trigger, samples.start);
         let gain1 = snap.gain1;
         let gain2 = snap.gain2;

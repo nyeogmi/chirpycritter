@@ -3,6 +3,7 @@ use std::f32::consts::PI;
 use crate::*;
 use super::*;
 
+use fastapprox::faster::exp as fast_exp;
 use fastapprox::faster::tanh as fast_tanh;
 
 #[derive(Clone)]
@@ -85,7 +86,7 @@ impl MoogLP {
         let fcr = 1.8730 * fc3 + 0.4955 * fc2 - 0.6490 * fc + 0.9988;
         self.acr = -3.9364 * fc2 + 1.8409 * fc + 0.9968;
 
-        self.tune = (1.0 - (-2.0 * PI * f * fcr).exp()) / self.thermal;
+        self.tune = (1.0 - fast_exp(-2.0 * PI * f * fcr)) / self.thermal;
 
         self.res_quad = 4.0 * self.resonance * self.acr;
     }
