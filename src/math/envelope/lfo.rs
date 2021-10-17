@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct LFO<T> {
     pub sync: bool,
     pub period: T,
@@ -11,6 +11,10 @@ pub struct LFO<T> {
 }
 
 impl LFO<f32> {
+    pub fn init() -> LFO<f32> {
+        LFO { sync: false, period: 0.0, pulse_width: 0.0, waveform: Waveform::Sine, adsr: None }
+    }
+
     pub(crate) fn apply_time(&self, config: TimeConfig) -> LFO<u64> {
         LFO { 
             sync: self.sync,
@@ -20,10 +24,6 @@ impl LFO<f32> {
             waveform: self.waveform,
             adsr: self.adsr.map(|a| a.apply_time(config)),
         }
-    }
-
-    pub fn none() -> LFO<f32> {
-        LFO { sync: false, period: 0.0, pulse_width: 0.0, waveform: Waveform::Sine, adsr: None }
     }
 }
 

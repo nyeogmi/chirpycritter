@@ -2,14 +2,14 @@ mod ensemble;
 mod generator;
 mod main;
 mod modulators;
-mod patch;
+mod patch_data;
 mod voice;
 mod trigger;
 mod vcf;
 
 pub use main::ChirpyCritter;
 pub use modulators::{Modulators, Modulated, ModEnvelope, ModLfo};
-pub use patch::{Patch, Osc, Spread, VCF};
+pub use patch_data::{PatchData, Osc, Spread, VCF};
 
 pub(self) use ensemble::Ensemble;
 pub(self) use generator::Generator;

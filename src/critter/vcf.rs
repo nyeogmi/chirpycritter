@@ -20,11 +20,11 @@ impl VCFImpl {
         }
     }
 
-    pub fn process<Buf: MonoBuf>(&mut self, snap: &ModulatorSnapshot, channel: &mut Buf) {
+    pub fn process<Buf: MonoBuf>(&mut self, snap: &ModulatorSnapshot, buf: &mut Buf) {
         let (cutoff, key_tracking) = self.patch.cutoff.over(snap);
         self.lp.set_cutoff(cutoff, key_tracking);
         self.lp.set_resonance(self.patch.resonance.over(snap).0);
-        self.lp.process(channel)
+        self.lp.process(buf)
     }
 }
 

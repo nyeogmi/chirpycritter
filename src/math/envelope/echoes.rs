@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Echoes<T> {
     pub n_times: u64,
 
@@ -9,6 +9,15 @@ pub struct Echoes<T> {
 }
 
 impl Echoes<f32> {
+    pub fn none() -> Echoes<f32> {
+        Echoes {
+            n_times: 0,
+
+            sync: true,
+            period: 0.0,
+        }
+    }
+
     pub(crate) fn apply_time(&self, config: TimeConfig) -> Echoes<u64> {
         let per = if self.sync { config.samples_per_beat } else { config.samples_per_second };
         Echoes { 

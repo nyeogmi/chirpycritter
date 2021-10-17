@@ -2,7 +2,7 @@ use crate::*;
 
 use fastapprox::faster::pow as fast_pow;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ADSR<T> {
     pub attack: T, // seconds
     pub decay: T, // seconds
@@ -11,6 +11,11 @@ pub struct ADSR<T> {
 }
 
 impl ADSR<f32> {
+    pub fn init() -> ADSR<f32> {
+        // an exceptionally generic ADSR that won't click
+        ADSR { attack: 0.005, decay: 0.0, sustain: 1.0, release: 0.005 }
+    }
+
     pub(crate) fn apply_time(&self, config: TimeConfig) -> ADSR<u64> {
         ADSR { 
             attack: (self.attack * config.samples_per_second as f32).floor() as u64,
@@ -18,10 +23,6 @@ impl ADSR<f32> {
             sustain: self.sustain,
             release: (self.release * config.samples_per_second as f32).floor() as u64,
         }
-    }
-
-    pub(crate) fn maxed() -> ADSR<f32> {
-        ADSR { attack: 0.0, decay: 0.0, sustain: 1.0, release: 0.0 }
     }
 }
 

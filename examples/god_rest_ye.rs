@@ -1,12 +1,14 @@
 use std::{thread, time::Duration};
 
-use chirpycritter::{convert_midi, ChirpyCritter, SynthEnvironment};
+use chirpycritter::*;
 
 fn main() {
     let stock = SynthEnvironment::<ChirpyCritter>::start();
 
+    let presets = presets::load();
+
     let god_rest_ye = std::fs::read("examples/god_rest_ye.mid").unwrap();
-    let song = convert_midi(&god_rest_ye);
+    let song = convert_midi(&presets, &god_rest_ye);
     stock.setup(|synth| synth.play(song));
 
     while stock.is_playing() {

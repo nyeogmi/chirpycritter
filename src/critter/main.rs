@@ -17,6 +17,7 @@ impl Synthesizer for ChirpyCritter {
             sample: 0, 
             playback: Ensemble::start(config, 0, {
                 Song {
+                    tracks: [Track { patch: PatchData::init() }; TRACKS],
                     ticks_per_second: 1,
                     ticks_per_beat: 1,
                     data: Cow::Borrowed(&[]),

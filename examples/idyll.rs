@@ -1,12 +1,14 @@
 use std::{fs::File, thread, time::Duration};
 
-use chirpycritter::{ChirpyCritter, SynthEnvironment, convert_midi, wavexport};
+use chirpycritter::*;
 
 fn main() {
     let stock = SynthEnvironment::<ChirpyCritter>::start();
 
+    let presets = presets::load();
+
     let midi = std::fs::read("examples/idyll.mid").unwrap();
-    let song = convert_midi(&midi);
+    let song = convert_midi(&presets, &midi);
     stock.setup(|synth| synth.play(song.clone()));
 
     println!("start export");

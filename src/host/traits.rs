@@ -1,5 +1,6 @@
 use super::*;
 
+// TODO: This shouldn't be a trait
 pub trait Synthesizer: 'static+Send {
     fn new(config: SynthConfig) -> Self;
     fn populate<const N: usize>(&mut self, out: &mut FixedBuf<N>);

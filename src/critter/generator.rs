@@ -27,7 +27,7 @@ pub(crate) struct OscImpl {
 }
 
 impl Generator {
-    pub fn new_for(config: TimeConfig, patch: Patch<u64>) -> Generator {
+    pub fn new_for(config: TimeConfig, patch: PatchData<u64>) -> Generator {
         let osc1 = StereoOscImpl::new(patch.osc1);
         let osc2 = patch.osc2.map(StereoOscImpl::new);
 

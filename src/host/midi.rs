@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::{BTreeMap, btree_map::Entry}};
 
-use midly::num::{u4, u7};
+use midly::num::{u7};
 
-use crate::song::*;
+use crate::{Bank, PatchData, song::*};
 
-pub fn convert_midi(bytes: &[u8]) -> Song {
+pub fn convert_midi(bank: &Bank, bytes: &[u8]) -> Song {
     let smf = midly::Smf::parse(bytes).unwrap();
     let mut all_notes: BTreeMap<u64, Vec<Packet>> = BTreeMap::new();
 
@@ -17,22 +17,26 @@ pub fn convert_midi(bytes: &[u8]) -> Song {
 
     let mut microseconds_per_beat = 500000;  // 120 BPM
 
-    let mut channel_program: [u7; 16] = [u7::from(0); 16];  // TODO: Understand program changes _during_ a song
-    for track in smf.tracks.iter() {
+    let mut tracks = [Track { patch: PatchData::init() }; TRACKS];
+    for (track_i, track) in smf.tracks.iter().enumerate() {
         for &evt in track.iter() {
             match evt.kind {
-                midly::TrackEventKind::Midi { channel, message: midly::MidiMessage::ProgramChange { program }} => {
-                    channel_program[channel.as_int() as usize] = program;
+                midly::TrackEventKind::Meta(midly::MetaMessage::TrackName(tr)) => {
+                    if let Ok(u) = std::str::from_utf8(tr) {
+                        if let Some(patch) = bank.get(&u) {
+                            tracks[track_i].patch = patch.data;
+                        }
+                    }
                 }
                 _ => {}
             }
         }
     }
 
-    for track in smf.tracks {
+    for (track_i, track) in smf.tracks.iter().enumerate() {
         struct NoteOn {
             start: u64,
-            channel: u4,
+            track: usize,
         }
 
         let mut tick: u64 = 0;
@@ -44,19 +48,19 @@ pub fn convert_midi(bytes: &[u8]) -> Song {
             tick += evt.delta.as_int() as u64;
 
             match evt.kind {
-                midly::TrackEventKind::Midi { channel, message } => {
+                midly::TrackEventKind::Midi { channel: _, message } => {
                     match message {
                         midly::MidiMessage::NoteOn { key, vel } if vel > 0 => {
                             notes_on.insert(key, NoteOn {
                                 start: tick,
-                                channel,
+                                track: track_i,
                             });
                         }
                         midly::MidiMessage::NoteOff { key, vel: _ } | midly::MidiMessage::NoteOn { key, vel: _ } => {
                             if let Some(note_on) = notes_on.remove(&key) {
                                 // TODO: as_int -- actually convert to hertz!!!
                                 let packet = Packet::Play {
-                                    channel: note_on.channel.as_int() as u16,
+                                    track: note_on.track as u16,
                                     // program: channel_program[note_on.channel.as_int() as usize].as_int() as u16,
                                     frequency: to_hertz(key), 
                                     duration: (tick - note_on.start) as u16,
@@ -80,10 +84,10 @@ pub fn convert_midi(bytes: &[u8]) -> Song {
         }
     }
 
-    songify(ticks_per_beat, microseconds_per_beat, all_notes)
+    songify(ticks_per_beat, microseconds_per_beat, all_notes, tracks)
 }
 
-fn songify(ticks_per_beat: u32, microseconds_per_beat: u32, all_notes: BTreeMap<u64, Vec<Packet>>) -> Song {
+fn songify(ticks_per_beat: u32, microseconds_per_beat: u32, all_notes: BTreeMap<u64, Vec<Packet>>, tracks: [Track; TRACKS]) -> Song {
     // TODO: Do in floating point?
     let beats_per_second = 1000000 / microseconds_per_beat;
     let ticks_per_second = ticks_per_beat * beats_per_second;
@@ -109,6 +113,7 @@ fn songify(ticks_per_beat: u32, microseconds_per_beat: u32, all_notes: BTreeMap<
         ticks_per_second: ticks_per_second as u64,
         ticks_per_beat: ticks_per_beat as u64,
         data: Cow::Owned(song_packets),
+        tracks,
     }
 }
 

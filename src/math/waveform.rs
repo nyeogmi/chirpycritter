@@ -1,6 +1,6 @@
 use super::tables;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Waveform {
     Sine,
     Square,

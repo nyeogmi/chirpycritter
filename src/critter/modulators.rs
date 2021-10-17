@@ -1,7 +1,7 @@
 use crate::*;
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Modulators<T> {
     pub echoes: Echoes<T>,
     pub gain1: ADSR<T>, pub gain2: ADSR<T>,
@@ -55,7 +55,7 @@ impl Modulators<u64> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Modulated {
     pub keytrack: bool,
     pub value: f32,
@@ -69,10 +69,10 @@ pub struct Modulated {
     pub sidechain: ModEnvelope,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ModEnvelope { None, Env1, Env2, Env3, }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum ModLfo { None, Lfo1, Lfo2, Lfo3, }
 
 impl Modulated {

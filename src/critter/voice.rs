@@ -12,7 +12,7 @@ pub(super) struct Voice {
 }
 
 impl Voice {
-    pub(crate) fn new(note_ix: u64, config: TimeConfig, patch: Patch<f32>, duration: u16, frequency: u16) -> Voice {
+    pub(crate) fn new(note_ix: u64, config: TimeConfig, patch: PatchData<f32>, duration: u16, frequency: u16) -> Voice {
         Voice { 
             note_ix, 
 
