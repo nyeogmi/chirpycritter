@@ -11,7 +11,7 @@ pub fn sample_patch_1() -> Patch<f32> {
         }, 
         osc2: None,
         vcf1: VCF {
-            cutoff: Modulated { env: ModEnvelope::Env1, env_amplitude: 0.4, ..Modulated::just(0.4) },
+            cutoff: Modulated { keytrack: true, env: ModEnvelope::Env1, env_amplitude: 0.4, ..Modulated::just(0.4) },
             resonance: Modulated::just(0.7),
         },
         modulators: Modulators {
