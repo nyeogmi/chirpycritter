@@ -21,8 +21,9 @@ impl VCFImpl {
     }
 
     pub fn process<Buf: MonoBuf>(&mut self, snap: &ModulatorSnapshot, channel: &mut Buf) {
-        self.lp.set_cutoff(self.patch.cutoff.over(snap));
-        self.lp.set_resonance(self.patch.resonance.over(snap));
+        let (cutoff, key_tracking) = self.patch.cutoff.over(snap);
+        self.lp.set_cutoff(cutoff, key_tracking);
+        self.lp.set_resonance(self.patch.resonance.over(snap).0);
         self.lp.process(channel)
     }
 }
@@ -65,18 +66,20 @@ impl MoogLP {
             res_quad: 0.0,
         };
 
-        moog.set_cutoff(cutoff);
+        moog.set_cutoff(cutoff, 0.0);
         moog.set_resonance(resonance);
         moog
     }
 
-    pub(super) fn set_cutoff(&mut self, cutoff: f32) {
+    pub(super) fn set_cutoff(&mut self, cutoff: f32, key_tracking_offset: f32) {
+        let cutoff = cutoff.max(0.0).min(1.0);
         if cutoff == self.cutoff { return; }
 
         self.cutoff = cutoff;
 
         // basically, 0 should be something really low and 1 should be 24000 hz
-        let cutoff_freq = 47.0 * (512.0_f32).powf(cutoff);
+        let cutoff_freq = 47.0 * (512.0_f32).powf(cutoff) + key_tracking_offset;
+        let cutoff_freq = cutoff_freq.min(24000.0);
 
         let fc = cutoff_freq / (self.sample_rate as f32);
         let f = fc * 0.5;

@@ -122,7 +122,7 @@ impl Ensemble {
         let note_ix = self.song_next_note;
         self.song_next_note += 1;
 
-        let patch = if channel == 0 { sample_patch_1() } else { sample_patch_2() };
+        let patch = if channel == 0 { sample_patch_1() } else { sample_patch_1() };
 
         let voice_to_use = Some(Voice::new(note_ix, self.config, patch, duration, frequency));
         for v in self.playing.iter_mut() {

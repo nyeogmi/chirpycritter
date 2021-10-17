@@ -57,6 +57,7 @@ impl Modulators<u64> {
 
 #[derive(Clone, Copy)]
 pub struct Modulated {
+    pub keytrack: bool,
     pub value: f32,
     pub value_echo_dampen: f32,
     pub env: ModEnvelope,
@@ -77,6 +78,7 @@ pub enum ModLfo { None, Lfo1, Lfo2, Lfo3, }
 impl Modulated {
     pub(crate) fn just(value: f32) -> Modulated {
         Modulated {
+            keytrack: false,
             value, value_echo_dampen: 1.0,
             env: ModEnvelope::None, env_amplitude: 0.0, env_echo_dampen: 1.0,
             lfo: ModLfo::None, lfo_amplitude: 0.0, lfo_echo_dampen: 1.0,
@@ -84,11 +86,11 @@ impl Modulated {
         }
     }
 
-    pub(super) fn over(&self, snap: &ModulatorSnapshot) -> f32 {
+    pub(super) fn over(&self, snap: &ModulatorSnapshot) -> (f32, f32) {  // (value, keytracking) 
         let mut val = self.value * self.value_echo_dampen.powf(snap.echo as f32);
         val += snap.get_env(self.env, 0.0) * self.env_amplitude * self.env_echo_dampen.powf(snap.echo as f32);
         val += snap.get_lfo(self.lfo) * self.lfo_amplitude * snap.get_env(self.sidechain, 1.0) * self.lfo_echo_dampen.powf(snap.echo as f32);
-        val
+        (val, if self.keytrack { snap.true_frequency - 440.0 } else { 0.0 })
     }
 }
 impl ModulatorSnapshot {

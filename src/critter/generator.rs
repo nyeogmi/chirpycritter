@@ -88,7 +88,7 @@ impl StereoOscImpl {
     pub(super) fn populate(&mut self, trigger: Trigger, samples: Range<u64>, snap: &mut ModulatorSnapshot, gain: f32, mut write: impl FnMut(usize, (f32, f32))) {
         let mut samp = |osc: &mut OscImpl, offset: f32 | {
             let mut frequency = trigger.frequency as f32;
-            frequency = transpose(frequency, osc.patch.frequency_offset.over(snap) + offset);
+            frequency = transpose(frequency, osc.patch.frequency_offset.over(snap).0 + offset);
             snap.true_frequency = frequency;
             // TODO: Do with doubles instead?
             snap.waveform_progress = ((snap.true_frequency as f32 / trigger.config.samples_per_second as f32) * u32::MAX as f32) as u32;
@@ -129,9 +129,9 @@ impl OscImpl {
     pub(super) fn sample(&mut self, snap: &ModulatorSnapshot, gain: f32) -> f32 {
         self.waveform_progress += Wrapping(snap.waveform_progress); 
 
-        let base_wave = self.patch.waveform.at(self.patch.pulse_width.over(snap), self.waveform_progress.0);
+        let base_wave = self.patch.waveform.at(self.patch.pulse_width.over(snap).0, self.waveform_progress.0);
 
-        base_wave * gain * self.patch.mul_gain.over(snap)
+        base_wave * gain * self.patch.mul_gain.over(snap).0
     }
 }
 
