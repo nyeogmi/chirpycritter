@@ -13,7 +13,7 @@ pub fn wavexport<S: Synthesizer, W: Write + Seek>(setup: impl Fn(&mut S), file: 
     let mut s = S::new(SynthConfig { sample_rate });
     setup(&mut s);
 
-    let mut buf = FixedBuf::new();
+    let mut buf = FixedBuf::<1>::new();
     let mut samples: Vec<i16> = Vec::new();
     let mut i: u64 = 0;
     'bigloop: loop {

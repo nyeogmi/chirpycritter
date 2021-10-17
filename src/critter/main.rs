@@ -25,7 +25,7 @@ impl Synthesizer for ChirpyCritter {
         }
     }
 
-    fn populate(&mut self, buf: &mut FixedBuf) {
+    fn populate<const N: usize>(&mut self, buf: &mut FixedBuf<N>) {
         self.sample += 1;
         self.playback.populate(buf);
     }

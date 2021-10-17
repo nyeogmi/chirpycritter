@@ -17,27 +17,27 @@ pub trait MonoBuf: Sized {
     fn set(&mut self, ix: usize, samp: f32);
 }
 
-pub struct FixedBuf { 
-    pub left: [f32x8; 64],
-    pub right: [f32x8; 64], 
+pub struct FixedBuf<const N: usize> { 
+    pub left: [f32x8; N],
+    pub right: [f32x8; N], 
 }
-pub struct BorrowedBuf<'a> { 
+pub struct BorrowedBuf<'a, const N: usize> { 
     pub range: Range<usize>,
-    pub left: &'a mut [f32x8; 64],
-    pub right: &'a mut [f32x8; 64],
+    pub left: &'a mut [f32x8; N],
+    pub right: &'a mut [f32x8; N],
 }
 
 pub struct BorrowedChannel<'a, T: StereoBuf> { pub basis: &'a mut T, offset: usize }
 
-impl FixedBuf {
-    pub fn new() -> FixedBuf {
+impl<const N: usize> FixedBuf<N> {
+    pub fn new() -> FixedBuf<N> {
         FixedBuf { 
-            left: [f32x8::ZERO; 64],
-            right: [f32x8::ZERO; 64],
+            left: [f32x8::ZERO; N],
+            right: [f32x8::ZERO; N],
         }
     }
 
-    pub fn range<'a>(&'a mut self, range: Range<usize>) -> BorrowedBuf<'a> {
+    pub fn range<'a>(&'a mut self, range: Range<usize>) -> BorrowedBuf<'a, N> {
         BorrowedBuf { 
             range,
             left: &mut self.left,
@@ -60,7 +60,7 @@ impl FixedBuf {
         c[in_cell_ix]
     }
 
-    pub fn add_from(&mut self, other: &BorrowedBuf) {
+    pub fn add_from(&mut self, other: &BorrowedBuf<N>) {
         let cell_range_low = other.range.start / 8;
         let cell_range_high = (other.range.end + 7) / 8;
 
@@ -72,7 +72,7 @@ impl FixedBuf {
 }
 
 // TODO: Do these with unsafe?
-impl StereoBuf for FixedBuf {
+impl<const N: usize> StereoBuf for FixedBuf<N> {
     fn len(&self) -> usize { self.left.len() * 8 }
 
     fn get(&self, ix: usize) -> [f32; 2] {
@@ -93,7 +93,7 @@ impl StereoBuf for FixedBuf {
     }
 }
 
-impl<'a> StereoBuf for BorrowedBuf<'a> {
+impl<'a, const N: usize> StereoBuf for BorrowedBuf<'a, N> {
     fn len(&self) -> usize { self.range.len() }
 
     #[track_caller]

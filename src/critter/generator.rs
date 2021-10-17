@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{num::Wrapping, ops::Range};
 
 use crate::*;
 use super::*;
@@ -23,7 +23,7 @@ enum StereoOscImpl {
 #[derive(Clone)]
 pub(crate) struct OscImpl {
     pub patch: Osc,
-    pub waveform_progress: f32,
+    pub waveform_progress: Wrapping<u32>,
 }
 
 impl Generator {
@@ -90,7 +90,8 @@ impl StereoOscImpl {
             let mut frequency = trigger.frequency as f32;
             frequency = transpose(frequency, osc.patch.frequency_offset.over(snap) + offset);
             snap.true_frequency = frequency;
-            snap.waveform_progress = snap.true_frequency as f32 / trigger.config.samples_per_second as f32;
+            // TODO: Do with doubles instead?
+            snap.waveform_progress = ((snap.true_frequency as f32 / trigger.config.samples_per_second as f32) * u32::MAX as f32) as u32;
             osc.sample(snap, gain)
         };
 
@@ -121,15 +122,14 @@ impl OscImpl {
     pub(super) fn new(osc: Osc) -> OscImpl {
         OscImpl { 
             patch: osc,
-            waveform_progress: 0.0,
+            waveform_progress: Wrapping(0u32),
         }
     }
 
     pub(super) fn sample(&mut self, snap: &ModulatorSnapshot, gain: f32) -> f32 {
-        self.waveform_progress += snap.waveform_progress; 
-        self.waveform_progress = self.waveform_progress - self.waveform_progress.floor();
+        self.waveform_progress += Wrapping(snap.waveform_progress); 
 
-        let base_wave = self.patch.waveform.at(self.patch.pulse_width.over(snap), self.waveform_progress);
+        let base_wave = self.patch.waveform.at(self.patch.pulse_width.over(snap), self.waveform_progress.0);
 
         base_wave * gain * self.patch.mul_gain.over(snap)
     }

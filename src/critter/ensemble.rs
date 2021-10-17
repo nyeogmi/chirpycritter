@@ -45,7 +45,7 @@ impl Ensemble {
         }
     }
 
-    pub(super) fn populate(&mut self, buf: &mut FixedBuf) {
+    pub(super) fn populate<const N: usize>(&mut self, buf: &mut FixedBuf<N>) {
         let mut buf_i: usize = 0;
 
         for i in 0..buf.len() { buf.set(i, [0.0, 0.0]); }

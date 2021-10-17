@@ -40,7 +40,7 @@ impl LFO<u64> {
         // TODO: No F32 conversion, use the percentage operation
         let cycle_t = (t % self.period) as f32 / self.period as f32;
 
-        let wf = self.waveform.at(self.pulse_width, cycle_t) * mul;
+        let wf = self.waveform.at(self.pulse_width, (cycle_t * u32::MAX as f32) as u32) * mul;
         wf
     }
 }

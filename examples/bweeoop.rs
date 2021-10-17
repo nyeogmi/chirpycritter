@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use chirpycritter::{SynthBuf, SynthConfig, SynthEnvironment, Synthesizer};
+use chirpycritter::*;
 
 struct SineExample {
     config: SynthConfig,
@@ -12,12 +12,12 @@ impl Synthesizer for SineExample {
         SineExample { config, sample: 0 }
     }
 
-    fn populate<Buf: SynthBuf>(&mut self, buf: &mut Buf) {
+    fn populate<const N: usize>(&mut self, buf: &mut FixedBuf<N>) {
         for i in 0..buf.len() {
             self.sample += 1;
             let l = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
             let r = (self.sample as f32 * 440.0 * 2.0 * std::f32::consts::PI / self.config.sample_rate as f32).sin();
-            buf.set(i, (l, r))
+            buf.set(i, [l, r])
         }
     }
 

@@ -88,7 +88,7 @@ impl<S: Synthesizer> SynthEnvironment<S> {
 
 pub struct SynthState<S: Synthesizer> {
     // TODO: Reset buf state in any cases? (End of song, etc.)
-    buf: FixedBuf,
+    buf: FixedBuf<1>,
     buf_ix: usize,
     synth: S,
 }

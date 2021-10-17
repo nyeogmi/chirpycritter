@@ -1,6 +1,4 @@
-use std::f32::consts::PI;
-
-use fastapprox::faster::sin as fast_sin;
+use super::tables;
 
 #[derive(Clone, Copy)]
 pub enum Waveform {
@@ -12,28 +10,19 @@ pub enum Waveform {
 
 // TODO: Nearly all of this code can probably be done way faster
 impl Waveform {
-    pub fn at(&self, pulse_width: f32, pos: f32) -> f32 {
-        let pulse_width = 1.0 - pulse_width;  // it's more natural to have this go up from 0.0 to 1.0, where 1.0 is most intense
-        match self {
-            Waveform::Sine => {
-                let cycle_width = 0.5 + pulse_width * 0.5;
-                let pos2 = pos / cycle_width;
-                let pos2 = pos2 - pos2.floor();
-                fast_sin(pos2 * 2.0 * PI - PI)
-            }
-            Waveform::Square => if pos < (0.5 * pulse_width) { -1.0 } else { 1.0 },
-            Waveform::Triangle => {
-                let cycle_width = 0.5 + pulse_width * 0.5;
-                let pos2 = pos / cycle_width;
-                let pos2 = pos2 - pos2.floor();
-                if pos2 < 0.5 { pos2 * 4.0 - 1.0 } else { (pos2 - 0.5) * -4.0 + 1.0}
-            }
-            Waveform::Saw => {
-                let cycle_width = 0.5 + pulse_width * 0.5;
-                let pos2 = pos / cycle_width;
-                let pos2 = pos2 - pos2.floor();
-                pos2 * 2.0 - 1.0
-            }
-        }
+    pub fn at(&self, pwm: f32, pos: u32) -> f32 {
+        let cycle_width = ((1.0 - pwm / 2.0) * u32::MAX as f32) as u64;  // it's more natural to have this go up from 0.0 to 1.0, where 1.0 is most intense
+        let cycle_width = cycle_width.max((u32::MAX/2) as u64).min(u32::MAX as u64);
+
+        let pos = ((pos as u64 * u32::MAX as u64) / cycle_width) as u32;
+        let pos2 = ((pos >> 22) & 0x3ff) as usize;  // from 0 to 1024
+
+        let table = match self {
+            Waveform::Sine => { tables::SIN }
+            Waveform::Square => { tables::SQUARE }
+            Waveform::Triangle => { tables::TRIANGLE }
+            Waveform::Saw => { tables::SAW }
+        };
+        table[pos2]
     }
 }

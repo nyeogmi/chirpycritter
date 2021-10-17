@@ -12,7 +12,7 @@ pub struct Modulators<T> {
 #[derive(Clone)]
 pub(super) struct ModulatorSnapshot {
     pub(super) true_frequency: f32,
-    pub(super) waveform_progress: f32,
+    pub(super) waveform_progress: u32,
     pub(super) echo: u64,
     pub(super) gain1: f32, pub(super) gain2: f32,
     pub(super) env1: f32, pub(super) env2: f32, pub(super) env3: f32,
@@ -41,7 +41,7 @@ impl Modulators<u64> {
 
         ModulatorSnapshot {
             true_frequency: 0.0,  // must be populated later
-            waveform_progress: 0.0,  // ditto
+            waveform_progress: 0,  // ditto
             echo: echo,
             gain1: self.gain1.at(trigger.release_at, sample),
             gain2: self.gain2.at(trigger.release_at, sample),

@@ -15,3 +15,5 @@ edition = "2018"
 cpal = "0.13.4"
 midly = "0.5.2"  # TODO: Gate behind a feature
 wav = "1.0.0"
+fastapprox = "0.3.0"
+wide = "0.7.1"

@@ -2,7 +2,7 @@ use super::*;
 
 pub trait Synthesizer: 'static+Send {
     fn new(config: SynthConfig) -> Self;
-    fn populate(&mut self, out: &mut FixedBuf);
+    fn populate<const N: usize>(&mut self, out: &mut FixedBuf<N>);
     fn is_playing(&self, sample: u64) -> bool;
 }
 

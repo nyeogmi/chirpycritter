@@ -1,5 +1,6 @@
 mod envelope;
 mod interpolation;
+pub(self) mod tables;
 mod time;
 mod waveform;
 
